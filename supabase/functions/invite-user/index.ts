@@ -49,13 +49,14 @@ Deno.serve(async (req) => {
     }
     const invitee = users[0];
 
-    // Insert the new user into the company_users table
+    // Insert the new user into the company_users table with a 'pending' status
     const { error: insertError } = await supabaseAdmin
       .from('company_users')
       .insert({
         company_id: company_id,
         user_id: invitee.id, // Use the user ID from the lookup
         role: 'member',
+        status: 'pending', // Set initial status
       })
 
     if (insertError) {
