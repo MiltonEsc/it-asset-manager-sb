@@ -1,0 +1,2179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Activos y Hojas de Vida TIC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SDK de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Librerías para exportar a PDF y Gráficos -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        select[multiple] { background-image: none; }
+        dialog::backdrop { background-color: rgba(0, 0, 0, 0.5); }
+        .nav-link { cursor: pointer; padding: 0.5rem 1rem; border-radius: 0.375rem; transition: all 0.2s ease-in-out; }
+        .nav-link.active, .dropdown-toggle.active { color: #4338ca; font-weight: 600; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .tab-link { cursor: pointer; padding: 0.5rem 1rem; border-radius: 0.375rem; transition: background-color 0.2s ease-in-out; }
+        .tab-link.active { background-color: #eef2ff; color: #4338ca; font-weight: 500; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Estilos para la animación de la notificación (toast) */
+        @keyframes fade-in-out {
+          0% { opacity: 0; transform: translateY(-20px); }
+          10% { opacity: 1; transform: translateY(0); }
+          90% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-20px); }
+        }
+        .animate-fade-in-out {
+          animation: fade-in-out 4s ease-in-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Contenedor de Autenticación -->
+    <div id="auth-container" class="flex items-center justify-center min-h-screen bg-gray-200">
+        <!-- Formulario de Login -->
+        <div id="login-wrapper" class="w-full max-w-md">
+            <div class="p-8 space-y-6 bg-white rounded-xl shadow-lg">
+                <h1 class="text-3xl font-bold text-center text-gray-900">Iniciar Sesión</h1>
+                <p class="text-center text-gray-600">Gestión de Activos TIC</p>
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label for="login-email" class="text-sm font-medium text-gray-700">Email</label>
+                        <input id="login-email" name="email" type="email" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="login-password" class="text-sm font-medium text-gray-700">Contraseña</label>
+                        <input id="login-password" name="password" type="password" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <p id="login-error" class="text-sm text-red-600 text-center hidden">Email o contraseña incorrectos.</p>
+                    <button type="submit" class="w-full py-2 px-4 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Ingresar</button>
+                </form>
+                <div class="relative flex py-3 items-center">
+                    <div class="flex-grow border-t border-gray-300"></div>
+                    <span class="flex-shrink mx-4 text-gray-500 text-sm">O</span>
+                    <div class="flex-grow border-t border-gray-300"></div>
+                </div>
+                <button type="button" id="google-login-btn" class="w-full flex items-center justify-center py-2 px-4 font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.519-3.487-11.181-8.264l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.443-2.61 4.451-4.986 5.626l6.19 5.238C42.612 34.627 44 29.692 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+                    <span>Continuar con Google</span>
+                </button>
+                <p class="text-center text-sm text-gray-600">¿No tienes cuenta? <a href="#" id="show-register-link" class="font-medium text-indigo-600 hover:text-indigo-500">Regístrate</a></p>
+            </div>
+        </div>
+        <!-- Formulario de Registro -->
+        <div id="register-wrapper" class="w-full max-w-md hidden">
+             <div class="p-8 space-y-6 bg-white rounded-xl shadow-lg">
+                <h1 class="text-3xl font-bold text-center text-gray-900">Crear Cuenta</h1>
+                <p id="register-message" class="text-sm text-center"></p>
+                <form id="register-form" class="space-y-4">
+                    <!-- CAMPO NUEVO: Nombre de Usuario -->
+                    <div>
+                        <label for="register-username" class="text-sm font-medium text-gray-700">Nombre de Usuario</label>
+                        <input id="register-username" name="username" type="text" required placeholder="Cómo te verán los demás" class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="register-email" class="text-sm font-medium text-gray-700">Email</label>
+                        <input id="register-email" name="email" type="email" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="register-password" class="text-sm font-medium text-gray-700">Contraseña</label>
+                        <input id="register-password" name="password" type="password" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full py-2 px-4 font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Registrarse</button>
+                </form>
+                <p class="text-center text-sm text-gray-600">¿Ya tienes cuenta? <a href="#" id="show-login-link" class="font-medium text-indigo-600 hover:text-indigo-500">Inicia sesión</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal de la App -->
+    <div id="app-container" class="hidden">
+        <header class="bg-white shadow-md sticky top-0 z-20">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-3">
+                    <!-- Izquierda: Título y Selector de Empresa -->
+                    <div class="flex items-center gap-4">
+                        <h1 class="text-xl font-bold text-gray-900 flex-shrink-0">Gestión de Activos TIC</h1>
+                        <select id="company-switcher" class="hidden sm:block bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full max-w-xs p-2"></select>
+                    </div>
+
+                    <!-- Centro: Navegación Principal con Dropdowns -->
+                    <nav id="main-nav" class="hidden md:flex items-center space-x-4 text-gray-600 font-medium text-sm">
+                        <a data-page="dashboard" class="nav-link active">Dashboard</a>
+                        
+                        <!-- Dropdown de Gestión -->
+                        <div class="relative dropdown">
+                            <button class="dropdown-toggle nav-link flex items-center gap-1">
+                                <span>Gestión</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            <div class="dropdown-panel hidden absolute mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                <a data-page="hojas-de-vida" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Hojas de Vida</a>
+                                <a data-page="inventario" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Inventario</a>
+                                <a data-page="mantenimiento" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mantenimiento</a>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown de Administración -->
+                        <div class="relative dropdown">
+                            <button class="dropdown-toggle nav-link flex items-center gap-1">
+                                <span>Administración</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            <div class="dropdown-panel hidden absolute mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                <a data-page="empresas" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Empresas</a>
+                                <a data-page="proveedores" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Proveedores</a>
+                                <a data-page="registro" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Registrar Usuario</a>
+                            </div>
+                        </div>
+
+                        <a data-page="reportes" class="nav-link">Reportes</a>
+                    </nav>
+
+                    <!-- Derecha: Acciones de Usuario y Menú Móvil -->
+                    <div class="flex items-center gap-4">
+                        <!-- Notificaciones -->
+                        <div class="relative">
+                            <button id="notifications-btn" class="relative text-gray-600 hover:text-gray-800 focus:outline-none">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V5a1 1 0 00-2 0v.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                <span id="notification-count" class="absolute -top-1 -right-1 flex justify-center items-center w-4 h-4 text-xs font-bold text-white bg-red-600 rounded-full hidden"></span>
+                            </button>
+                            <div id="notifications-panel" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl overflow-hidden z-20">
+                                <div class="py-2 px-4 text-sm font-semibold text-gray-700 border-b">Notificaciones</div>
+                                <div id="notifications-list" class="divide-y max-h-96 overflow-y-auto">
+                                    <!-- Las notificaciones se renderizarán aquí -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Info de Usuario -->
+                        <div class="flex items-center gap-2">
+                            <span id="user-display-name" class="text-sm font-medium text-gray-700 hidden sm:block truncate max-w-[150px]"></span>
+                            <button id="logout-btn" class="py-2 px-3 text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200">Cerrar Sesión</button>
+                        </div>
+                        
+                        <!-- Botón de Menú Móvil (Hamburguesa) -->
+                        <div class="md:hidden">
+                            <button id="mobile-menu-btn" class="text-gray-600 hover:text-gray-800 focus:outline-none">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Panel del Menú Móvil -->
+            <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-200">
+                <nav class="flex flex-col p-4 space-y-1">
+                    <a data-page="dashboard" class="nav-link active">Dashboard</a>
+                    <a data-page="hojas-de-vida" class="nav-link">Hojas de Vida</a>
+                    <a data-page="inventario" class="nav-link">Inventario</a>
+                    <a data-page="mantenimiento" class="nav-link">Mantenimiento</a>
+                    <a data-page="empresas" class="nav-link">Empresas</a>
+                    <a data-page="proveedores" class="nav-link">Proveedores</a>
+                    <a data-page="registro" class="nav-link">Registrar Usuario</a>
+                    <a data-page="reportes" class="nav-link">Reportes</a>
+                </nav>
+            </div>
+        </header>
+
+        <main class="container mx-auto p-4 sm:p-6 lg:p-8">
+            <!-- PÁGINA 0: DASHBOARD -->
+            <div id="page-dashboard" class="page active">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Stat Cards -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-sm font-medium text-gray-500">Equipos Totales</p><p id="stat-total-equipos" class="text-3xl font-bold text-gray-900">0</p></div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-sm font-medium text-gray-500">Usuarios Activos</p><p id="stat-total-usuarios" class="text-3xl font-bold text-gray-900">0</p></div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-sm font-medium text-gray-500">Licencias Disponibles</p><p id="stat-licencias-disponibles" class="text-3xl font-bold text-green-600">0</p></div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg"><p class="text-sm font-medium text-gray-500">Activos en Reparación</p><p id="stat-en-reparacion" class="text-3xl font-bold text-red-600">0</p></div>
+
+                    <!-- Charts and Lists -->
+                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-lg"><h3 class="font-semibold text-lg mb-4">Estado de Equipos</h3><div id="chart-estado-equipos" class="space-y-3"></div></div>
+                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-lg"><h3 class="font-semibold text-lg mb-4">Licencias Próximas a Vencer (90 días)</h3><div id="list-licencias-vencer" class="space-y-2 max-h-64 overflow-y-auto"></div></div>
+                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-lg"><h3 class="font-semibold text-lg mb-4">Garantías Próximas a Vencer (90 días)</h3><div id="list-garantias-vencer" class="space-y-2 max-h-64 overflow-y-auto"></div></div>
+                    <div class="md:col-span-2 bg-white p-6 rounded-xl shadow-lg"><h3 class="font-semibold text-lg mb-4">Actividad Reciente</h3><div id="list-actividad-reciente" class="space-y-2 max-h-64 overflow-y-auto"></div></div>
+                </div>
+            </div>
+
+            <!-- PÁGINA 1: HOJAS DE VIDA -->
+            <div id="page-hojas-de-vida" class="page">
+                <div class="flex justify-end mb-4">
+                    <button id="import-users-btn" class="py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">Importar Usuarios (CSV)</button>
+                </div>
+                <div id="user-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <!-- PÁGINA 2: INVENTARIO -->
+            <div id="page-inventario" class="page"><div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg max-w-7xl mx-auto"><h2 class="text-2xl font-semibold mb-4">Gestión de Inventario</h2><div class="border-b border-gray-200 mb-6"><nav id="inventory-nav" class="flex space-x-4" aria-label="Tabs"><a data-tab="equipos" class="tab-link active">Equipos</a><a data-tab="software" class="tab-link">Software</a><a data-tab="perifericos" class="tab-link">Periféricos</a></nav></div><div id="inventory-content"><div id="tab-content-equipos" class="tab-content active"><div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4"><input type="search" data-type="equipos" class="inventory-search-input block w-full sm:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Buscar por marca, modelo, S/N..."><div class="flex gap-2 w-full sm:w-auto"><button data-type="equipos" class="import-csv-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">Importar CSV</button><button data-type="equipos" class="export-csv-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50">Exportar CSV</button><button data-type="equipo" class="add-inventory-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">Añadir Equipo</button></div></div><div class="overflow-x-auto"></div></div><div id="tab-content-software" class="tab-content"><div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4"><input type="search" data-type="software" class="inventory-search-input block w-full sm:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Buscar por nombre, tipo..."><div class="flex gap-2 w-full sm:w-auto"><button data-type="software" class="import-csv-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">Importar CSV</button><button data-type="software" class="export-csv-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50">Exportar CSV</button><button data-type="software" class="add-inventory-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">Añadir Software</button></div></div><div class="overflow-x-auto"></div></div><div id="tab-content-perifericos" class="tab-content"><div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4"><input type="search" data-type="perifericos" class="inventory-search-input block w-full sm:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Buscar por tipo, marca..."><div class="flex gap-2 w-full sm:w-auto"><button data-type="perifericos" class="import-csv-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">Importar CSV</button><button data-type="perifericos" class="export-csv-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50">Exportar CSV</button><button data-type="periferico" class="add-inventory-btn w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">Añadir Periférico</button></div></div><div class="overflow-x-auto"></div></div></div></div></div>
+            
+            <!-- PÁGINA 3: MANTENIMIENTO -->
+            <div id="page-mantenimiento" class="page"><div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg max-w-7xl mx-auto"><div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4"><h2 class="text-2xl font-semibold">Historial de Mantenimiento</h2><button id="add-maintenance-btn" class="w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">Registrar Mantenimiento</button></div><div class="mb-4"><input type="search" id="maintenance-search-input" class="block w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Buscar por equipo (marca, modelo, S/N)..."></div><div id="maintenance-table-container" class="overflow-x-auto"></div></div></div>
+            
+            <!-- PÁGINA 4: PROVEEDORES -->
+            <div id="page-proveedores" class="page"><div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg max-w-7xl mx-auto"><div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4"><h2 class="text-2xl font-semibold">Gestión de Proveedores</h2><button id="add-provider-btn" class="w-full sm:w-auto py-2 px-4 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">Añadir Proveedor</button></div><div id="provider-table-container" class="overflow-x-auto"></div></div></div>
+
+            <!-- PÁGINA 5: REGISTRO DE USUARIO -->
+            <div id="page-registro" class="page"><div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg max-w-4xl mx-auto"><h2 id="form-title" class="text-2xl font-semibold mb-6 border-b pb-3">Nuevo Registro de Usuario</h2><form id="registro-form" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6"><div class="space-y-4"><h3 class="text-lg font-medium text-gray-800">Datos del Usuario</h3><div><label for="nombre" class="block text-sm font-medium text-gray-700">Nombre y Apellido</label><input type="text" id="nombre" name="nombre" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"></div><div><label for="cargo" class="block text-sm font-medium text-gray-700">Cargo</label><input type="text" id="cargo" name="cargo" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"></div><div><label for="departamento" class="block text-sm font-medium text-gray-700">Departamento</label><input type="text" id="departamento" name="departamento" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"></div><div><label for="cedula" class="block text-sm font-medium text-gray-700">Cédula</label><input type="text" id="cedula" name="cedula" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"></div><div><label for="fecha-ingreso" class="block text-sm font-medium text-gray-700">Fecha de Ingreso</label><input type="date" id="fecha-ingreso" name="fecha_ingreso" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm"></div></div><div class="space-y-4"><h3 class="text-lg font-medium text-gray-800">Cuentas y Activos</h3><div class="flex items-start pt-2"><div class="flex items-center h-5"><input id="induccion_tic" name="induccion_tic" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"></div><div class="ml-3 text-sm"><label for="induccion_tic" class="font-medium text-gray-700">Recibió Inducción TIC</label><p class="text-gray-500 text-xs">Marcar si el usuario completó la inducción inicial.</p></div></div><div><label for="cuentas_creadas" class="block text-sm font-medium text-gray-700">Cuentas de Usuario Creadas</label><textarea id="cuentas_creadas" name="cuentas_creadas" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm" placeholder="Listar una cuenta por línea. Ej:&#10;ERP: juan.perez&#10;Email: juan.perez@empresa.com"></textarea></div><div><label for="equipo" class="block text-sm font-medium text-gray-700">Equipo Principal</label><select id="equipo" name="equipo_id" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm sm:text-sm"></select></div><div><label for="software" class="block text-sm font-medium text-gray-700">Software <span class="text-xs text-gray-500">(Ctrl+Click)</span></label><select id="software" name="software_ids" multiple class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm h-24"></select></div><div><label for="perifericos" class="block text-sm font-medium text-gray-700">Periféricos <span class="text-xs text-gray-500">(Ctrl+Click)</span></label><select id="perifericos" name="perifericos_ids" multiple class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm h-24"></select></div></div><div class="md:col-span-2 text-right space-x-3"><button type="button" id="cancel-edit-btn" class="hidden inline-flex justify-center py-2 px-6 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Cancelar</button><button type="submit" id="submit-btn" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">Guardar Registro</button></div></form></div></div>
+            
+            <!-- PÁGINA DE REPORTES -->
+            <div id="page-reportes" class="page">
+                <h2 class="text-3xl font-bold mb-6">Reportes y Análisis</h2>
+                <!-- Métricas Clave -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <p class="text-sm font-medium text-gray-500">Costo Total del Inventario</p>
+                        <p id="report-total-cost" class="text-3xl font-bold text-gray-900">$0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <p class="text-sm font-medium text-gray-500">Costo Promedio por Usuario</p>
+                        <p id="report-avg-cost-user" class="text-3xl font-bold text-gray-900">$0</p>
+                    </div>
+                </div>
+                <!-- Gráficos -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="font-semibold text-lg mb-4">Costo por Tipo de Activo</h3>
+                        <div class="h-80 w-full flex items-center justify-center">
+                            <canvas id="chart-costo-tipo"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="font-semibold text-lg mb-4">Costo por Proveedor</h3>
+                        <div class="h-80 w-full flex items-center justify-center">
+                             <canvas id="chart-costo-proveedor"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PÁGINA DE EMPRESAS -->
+            <div id="page-empresas" class="page">
+                <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg max-w-4xl mx-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold">Gestionar Empresas</h2>
+                        <button id="add-company-btn" class="py-2 px-4 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">Crear Nueva Empresa</button>
+                    </div>
+                    <div id="invitations-container" class="space-y-4 mb-6">
+                        <!-- Las invitaciones pendientes se renderizarán aquí -->
+                    </div>
+                    <div id="company-list-container" class="space-y-4">
+                        <!-- Las empresas se renderizarán aquí -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modales -->
+    <dialog id="inventory-modal" class="p-0 rounded-lg shadow-xl w-full max-w-3xl"><div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b"><h3 id="modal-inventory-title" class="text-xl font-semibold"></h3><button class="modal-close-btn text-2xl leading-none">&times;</button></div><form id="inventory-form" class="p-6 space-y-4"></form></dialog>
+    <dialog id="user-detail-modal" class="p-0 rounded-lg shadow-xl w-full max-w-4xl"><div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b"><h3 id="modal-user-title" class="text-xl font-semibold"></h3><div class="flex items-center gap-4"><button id="export-pdf-btn" class="py-2 px-4 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">Exportar a PDF</button><button class="modal-close-btn text-2xl leading-none">&times;</button></div></div><div id="user-detail-content" class="p-6"></div></dialog>
+    <dialog id="asset-detail-modal" class="p-0 rounded-lg shadow-xl w-full max-w-4xl"><div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b"><h3 id="modal-asset-title" class="text-xl font-semibold"></h3><button class="modal-close-btn text-2xl leading-none">&times;</button></div><div id="asset-detail-content" class="p-6"></div></dialog>
+    <dialog id="maintenance-modal" class="p-0 rounded-lg shadow-xl w-full max-w-2xl"><div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b"><h3 class="text-xl font-semibold">Registrar Mantenimiento</h3><button class="modal-close-btn text-2xl leading-none">&times;</button></div><form id="maintenance-form" class="p-6 space-y-4"></form></dialog>
+    <dialog id="provider-modal" class="p-0 rounded-lg shadow-xl w-full max-w-lg"><div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b"><h3 id="modal-provider-title" class="text-xl font-semibold"></h3><button class="modal-close-btn text-2xl leading-none">&times;</button></div><form id="provider-form" class="p-6 space-y-4"></form></dialog>
+    <dialog id="company-modal" class="p-0 rounded-lg shadow-xl w-full max-w-md"><div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b"><h3 class="text-xl font-semibold">Crear Nueva Empresa</h3><button class="modal-close-btn text-2xl leading-none">&times;</button></div><form id="company-form" class="p-6 space-y-4"><div><label class="block text-sm">Nombre de la Empresa</label><input type="text" name="name" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div class="text-right"><button type="submit" class="py-2 px-6 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">Guardar</button></div></form></dialog>
+    <dialog id="invite-modal" class="p-0 rounded-lg shadow-xl w-full max-w-md"><div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b"><h3 id="invite-modal-title" class="text-xl font-semibold">Invitar Usuario</h3><button class="modal-close-btn text-2xl leading-none">&times;</button></div><form id="invite-form" class="p-6 space-y-4"><input type="hidden" name="company_id"><div><label class="block text-sm">Email del Usuario a Invitar</label><input type="email" name="email" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div class="text-right"><button type="submit" class="py-2 px-6 text-white bg-green-600 hover:bg-green-700 rounded-md">Enviar Invitación</button></div></form></dialog>
+    
+    <!-- Modal de Importación -->
+    <dialog id="import-modal" class="p-0 rounded-lg shadow-xl w-full max-w-lg">
+        <div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b">
+            <h3 id="modal-import-title" class="text-xl font-semibold">Importar desde CSV</h3>
+            <button class="modal-close-btn text-2xl leading-none">&times;</button>
+        </div>
+        <form id="import-form" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Archivo CSV</label>
+                <input type="file" name="import_file" accept=".csv" required class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Asegúrate que tu archivo CSV tenga las siguientes columnas:</p>
+                <pre id="import-headers-info" class="bg-gray-100 p-2 mt-2 rounded-md text-xs overflow-x-auto"></pre>
+            </div>
+            <p id="import-status" class="text-sm text-center"></p>
+            <div class="text-right">
+                <button type="submit" class="py-2 px-6 text-white bg-green-600 hover:bg-green-700 rounded-md">Importar</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Modal de Confirmación Genérico -->
+    <dialog id="confirm-modal" class="p-0 rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6 text-center">
+            <svg class="mx-auto mb-4 text-gray-400 w-12 h-12" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+            </svg>
+            <h3 id="confirm-modal-text" class="mb-5 text-lg font-normal text-gray-500">¿Estás seguro?</h3>
+            <button id="confirm-modal-confirm-btn" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center mr-2">
+                Sí, estoy seguro
+            </button>
+            <button id="confirm-modal-cancel-btn" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10">
+                No, cancelar
+            </button>
+        </div>
+    </dialog>
+
+    <!-- Modal de Confirmación para Eliminar Empresa -->
+    <dialog id="delete-company-modal" class="p-0 rounded-lg shadow-xl w-full max-w-lg">
+        <div class="sticky top-0 bg-white p-4 flex justify-between items-center border-b">
+            <h3 class="text-xl font-semibold text-red-700">Confirmación de Eliminación Permanente</h3>
+            <button class="modal-close-btn text-2xl leading-none">&times;</button>
+        </div>
+        <form id="delete-company-form" class="p-6 space-y-4">
+            <input type="hidden" name="company_id">
+            <input type="hidden" name="company_name">
+            <p class="text-sm text-gray-600">Esta acción es irreversible y eliminará la empresa, junto con todos sus activos, usuarios y datos asociados.</p>
+            <p class="text-sm text-gray-600">Para confirmar, por favor escribe el nombre exacto de la empresa: <strong id="delete-company-name-confirm"></strong></p>
+            <div>
+                <label class="block text-sm">Nombre de la empresa</label>
+                <input type="text" name="confirmation_text" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm" autocomplete="off">
+            </div>
+            <p id="delete-company-error" class="text-sm text-red-600 text-center hidden"></p>
+            <div class="text-right">
+                <button type="button" class="modal-close-btn py-2 px-6 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md mr-2">Cancelar</button>
+                <button type="submit" id="delete-company-submit-btn" class="py-2 px-6 text-white bg-red-600 hover:bg-red-700 rounded-md disabled:bg-red-300" disabled>Eliminar Permanentemente</button>
+            </div>
+        </form>
+    </dialog>
+    
+    <!-- Plantillas -->
+    <template id="user-card-template"><div class="bg-white rounded-xl shadow-lg p-6 flex flex-col"><div class="flex-grow"><h3 class="font-bold text-lg text-gray-900"></h3><p class="text-sm text-gray-600 mb-4"></p><div class="pt-4 border-t border-gray-200 text-sm space-y-2"><p><strong>Departamento:</strong> <span class="departamento"></span></p><p><strong>Cédula:</strong> <span class="cedula"></span></p><p><strong>Equipo:</strong> <span class="equipo"></span></p></div></div><div class="mt-4 pt-4 border-t border-gray-100 text-right space-x-2"><button class="edit-user-btn text-sm font-medium text-blue-600 hover:text-blue-800">Editar</button><button class="delete-user-btn text-sm font-medium text-red-600 hover:text-red-800">Eliminar</button><button class="view-user-btn text-sm font-medium text-indigo-600 hover:text-indigo-800">Ver Hoja de Vida &rarr;</button></div></div></template>
+    <template id="equipo-form-template"><input type="hidden" name="id"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><h4 class="md:col-span-2 text-lg font-medium text-gray-800 border-b pb-2">Detalles del Equipo</h4><div><label class="block text-sm">Marca</label><input type="text" name="marca" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Modelo</label><input type="text" name="modelo" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Número de Serie</label><input type="text" name="numero_serie" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Estado</label><select name="estado" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"><option>Bueno</option><option>Regular</option><option>Malo</option><option>En reparación</option></select></div><div class="md:col-span-2"><label class="block text-sm">Ubicación</label><input type="text" name="ubicacion" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><h4 class="md:col-span-2 text-lg font-medium text-gray-800 border-b pb-2 mt-4">Información de Compra</h4><div><label class="block text-sm">Proveedor</label><select name="proveedor_id" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></select></div><div><label class="block text-sm">Número de Factura</label><input type="text" name="numero_factura" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Fecha de Compra</label><input type="date" name="fecha_compra" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Vencimiento de Garantía</label><input type="date" name="fecha_vencimiento_garantia" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Costo</label><input type="number" name="costo" step="0.01" placeholder="0.00" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-sm">Imagen del Activo</label><input type="file" name="imagen" accept="image/*" class="mt-1 w-full text-sm"></div><div><label class="block text-sm">Factura (PDF)</label><input type="file" name="factura_pdf" accept="application/pdf" class="mt-1 w-full text-sm"></div></div></div><div class="text-right mt-4"><button type="submit" class="py-2 px-6 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">Guardar</button></div></template>
+    <template id="software-form-template"><input type="hidden" name="id"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><h4 class="md:col-span-2 text-lg font-medium text-gray-800 border-b pb-2">Detalles del Software</h4><div><label class="block text-sm">Nombre del Software</label><input type="text" name="nombre" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Tipo de Software</label><input type="text" name="tipo" placeholder="Ej: Ofimática, Diseño" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Versión</label><input type="text" name="version" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Licencias (Stock)</label><input type="number" name="stock" value="1" min="0" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><h4 class="md:col-span-2 text-lg font-medium text-gray-800 border-b pb-2 mt-4">Información de Compra</h4><div><label class="block text-sm">Proveedor</label><select name="proveedor_id" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></select></div><div><label class="block text-sm">Número de Factura</label><input type="text" name="numero_factura" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Fecha de Compra</label><input type="date" name="fecha_compra" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Vencimiento de Licencia</label><input type="date" name="fecha_vencimiento" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Costo</label><input type="number" name="costo" step="0.01" placeholder="0.00" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div class="md:col-span-2"><label class="block text-sm">Icono o Imagen del Software</label><input type="file" name="imagen" accept="image/*" class="mt-1 w-full text-sm"></div></div><div class="text-right mt-4"><button type="submit" class="py-2 px-6 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">Guardar</button></div></template>
+    <template id="periferico-form-template"><input type="hidden" name="id"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><h4 class="md:col-span-2 text-lg font-medium text-gray-800 border-b pb-2">Detalles del Periférico</h4><div><label class="block text-sm">Tipo de Periférico</label><input type="text" name="tipo" required placeholder="Ej: Monitor, Teclado" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Marca</label><input type="text" name="marca" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Modelo</label><input type="text" name="modelo" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Número de Serie</label><input type="text" name="numero_serie" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Estado</label><select name="estado" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"><option>Bueno</option><option>Regular</option><option>Malo</option></select></div><h4 class="md:col-span-2 text-lg font-medium text-gray-800 border-b pb-2 mt-4">Información de Compra</h4><div><label class="block text-sm">Proveedor</label><select name="proveedor_id" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></select></div><div><label class="block text-sm">Número de Factura</label><input type="text" name="numero_factura" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Fecha de Compra</label><input type="date" name="fecha_compra" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Vencimiento de Garantía</label><input type="date" name="fecha_vencimiento_garantia" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Costo</label><input type="number" name="costo" step="0.01" placeholder="0.00" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div class="md:col-span-2"><label class="block text-sm">Imagen del Activo</label><input type="file" name="imagen" accept="image/*" class="mt-1 w-full text-sm"></div></div><div class="text-right mt-4"><button type="submit" class="py-2 px-6 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">Guardar</button></div></template>
+    <template id="maintenance-form-template"><input type="hidden" name="id"><div><label class="block text-sm">Equipo</label><select name="equipo_id" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></select></div><div><label class="block text-sm">Fecha de Mantenimiento</label><input type="date" name="fecha" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Técnico Responsable</label><input type="text" name="tecnico" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Descripción del Trabajo</label><textarea name="descripcion" rows="3" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></textarea></div><div><label class="block text-sm">Evidencia (Imagen)</label><input type="file" name="imagen" accept="image/*" class="mt-1 w-full text-sm"></div><div class="text-right mt-4"><button type="submit" class="py-2 px-6 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">Guardar</button></div></template>
+    <template id="provider-form-template"><input type="hidden" name="id"><div><label class="block text-sm">Nombre del Proveedor</label><input type="text" name="nombre" required class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Contacto</label><input type="text" name="contacto" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Teléfono</label><input type="tel" name="telefono" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm">Email</label><input type="email" name="email" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div class="text-right mt-4"><button type="submit" class="py-2 px-6 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">Guardar</button></div></template>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- CONFIGURACIÓN DE SUPABASE ---
+        const SUPABASE_URL = 'https://odlytztudephcftwqdsr.supabase.co'; // <-- TU URL DE SUPABASE
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kbHl0enR1ZGVwaGNmdHdxZHNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MDkzNDIsImV4cCI6MjA3MDA4NTM0Mn0.8EP6qZOyH1JsQtG8x-LuUFUV90xxhORPDOUJn-XLgOg'; // <-- TU CLAVE PÚBLICA
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- SELECTORES DOM ---
+        const authContainer = document.getElementById('auth-container');
+        const loginWrapper = document.getElementById('login-wrapper');
+        const registerWrapper = document.getElementById('register-wrapper');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        const showRegisterLink = document.getElementById('show-register-link');
+        const showLoginLink = document.getElementById('show-login-link');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userForm = document.getElementById('registro-form');
+        const inventoryModal = document.getElementById('inventory-modal');
+        const userDetailModal = document.getElementById('user-detail-modal');
+        const assetDetailModal = document.getElementById('asset-detail-modal');
+        const maintenanceModal = document.getElementById('maintenance-modal');
+        const providerModal = document.getElementById('provider-modal');
+        const importModal = document.getElementById('import-modal');
+        const companyModal = document.getElementById('company-modal');
+        const inviteModal = document.getElementById('invite-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+        const deleteCompanyModal = document.getElementById('delete-company-modal');
+        const inventoryForm = document.getElementById('inventory-form');
+        const maintenanceForm = document.getElementById('maintenance-form');
+        const providerForm = document.getElementById('provider-form');
+        const importForm = document.getElementById('import-form');
+        const companyForm = document.getElementById('company-form');
+        const inviteForm = document.getElementById('invite-form');
+        const deleteCompanyForm = document.getElementById('delete-company-form');
+        const mainNav = document.getElementById('main-nav');
+        const inventoryNav = document.getElementById('inventory-nav');
+        const companySwitcher = document.getElementById('company-switcher');
+        
+        // Selectores para notificaciones y nombre de usuario
+        const userDisplayName = document.getElementById('user-display-name');
+        const notificationsBtn = document.getElementById('notifications-btn');
+        const notificationCount = document.getElementById('notification-count');
+        const notificationsPanel = document.getElementById('notifications-panel');
+        const notificationsList = document.getElementById('notifications-list');
+
+        // Selectores para el menú móvil
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        const mainSelects = {
+            equipo: document.getElementById('equipo'),
+            software: document.getElementById('software'),
+            perifericos: document.getElementById('perifericos')
+        };
+        const templates = {
+            userCard: document.getElementById('user-card-template'),
+            equipo: document.getElementById('equipo-form-template'),
+            software: document.getElementById('software-form-template'),
+            periferico: document.getElementById('periferico-form-template'),
+            maintenance: document.getElementById('maintenance-form-template'),
+            provider: document.getElementById('provider-form-template')
+        };
+
+        // --- ESTADO DE LA APLICACIÓN ---
+        let state = {
+            user: null, // Objeto del usuario autenticado
+            companies: [], // Todas las relaciones company_user (incluye pendientes y aceptadas)
+            activeCompanyId: null,
+            registros: [],
+            inventario: { equipos: [], software: [], perifericos: [] },
+            proveedores: [],
+            editingUserId: null,
+            editingInventoryId: null,
+            editingInventoryType: null,
+            editingProviderId: null,
+            importingType: null,
+            currentPage: 'dashboard',
+            currentInventoryTab: 'equipos',
+            charts: {}
+        };
+        
+        // --- FUNCIONES DE PERSISTENCIA (SUPABASE) ---
+
+        // Carga todas las relaciones (pendientes, aceptadas) y actualiza el estado global.
+        const loadUserCompaniesAndInvitations = async () => {
+             if (!state.user) return;
+            
+            // Paso 1: Obtener las relaciones del usuario (sus membresías)
+            const { data: memberships, error: membershipError } = await supabaseClient
+                .from('company_users')
+                .select('company_id, status')
+                .eq('user_id', state.user.id);
+
+            if (membershipError) {
+                console.error("Error cargando membresías:", membershipError);
+                state.companies = [];
+                return;
+            }
+
+            if (!memberships || memberships.length === 0) {
+                state.companies = [];
+            } else {
+                // Paso 2: Con los IDs de las empresas, obtener sus detalles
+                const companyIds = memberships.map(m => m.company_id);
+                const { data: companiesData, error: companiesError } = await supabaseClient
+                    .from('companies')
+                    .select('*')
+                    .in('id', companyIds);
+
+                if (companiesError) {
+                    console.error("Error cargando detalles de empresas:", companiesError);
+                    state.companies = [];
+                    return;
+                }
+                
+                // Unir la información de la membresía (status) con los detalles de la empresa
+                state.companies = companiesData.map(company => {
+                    const membership = memberships.find(m => m.company_id === company.id);
+                    return { ...company, status: membership.status };
+                });
+            }
+
+            // Después de cargar, actualizamos todos los componentes que dependen de esta información.
+            populateCompanySwitcher();
+            renderNotifications();
+            if (state.currentPage === 'empresas') {
+                await renderEmpresasPage();
+            }
+        };
+
+        const loadData = async () => {
+            if (!state.activeCompanyId) {
+                console.log("No hay empresa activa, no se cargan datos.");
+                // Limpiar el estado si no hay empresa seleccionada
+                state.registros = [];
+                state.inventario = { equipos: [], software: [], perifericos: [] };
+                state.proveedores = [];
+                renderAll(); // Renderizar con el estado vacío
+                return;
+            }
+            console.log("Cargando datos para la empresa:", state.activeCompanyId);
+            
+            const { data: registrosData, error: rErr } = await supabaseClient.from('registros').select('*').eq('company_id', state.activeCompanyId);
+            const { data: equiposData, error: eErr } = await supabaseClient.from('equipos').select('*').eq('company_id', state.activeCompanyId);
+            const { data: softwareData, error: sErr } = await supabaseClient.from('software').select('*').eq('company_id', state.activeCompanyId);
+            const { data: perifericosData, error: pErr } = await supabaseClient.from('perifericos').select('*').eq('company_id', state.activeCompanyId);
+            const { data: proveedoresData, error: provErr } = await supabaseClient.from('proveedores').select('*').eq('company_id', state.activeCompanyId);
+
+            if (rErr) console.error('Error cargando registros:', rErr.message);
+            if (eErr) console.error('Error cargando equipos:', eErr.message);
+            if (sErr) console.error('Error cargando software:', sErr.message);
+            if (pErr) console.error('Error cargando perifericos:', pErr.message);
+            if (provErr) console.error('Error cargando proveedores:', provErr.message);
+
+            state.registros = registrosData || [];
+            state.inventario.equipos = equiposData || [];
+            state.inventario.software = softwareData || [];
+            state.inventario.perifericos = perifericosData || [];
+            state.proveedores = proveedoresData || [];
+            console.log("Datos cargados para la empresa activa:", state);
+            renderAll();
+        };
+
+        async function saveInventoryItem(type, data) {
+            const tableName = type === 'software' ? 'software' : type + 's';
+            try {
+                if (!data.id) delete data.id;
+                data.company_id = state.activeCompanyId;
+                
+                const { error } = await supabaseClient.from(tableName).upsert(data, { onConflict: 'id' });
+                if (error) throw error;
+                console.log(`✅ ${type} guardado en Supabase`);
+            } catch (err) {
+                console.error(`❌ Error guardando ${type}:`, err.message);
+                showToast(`Error al guardar: ${err.message}`, 'error');
+            }
+        }
+
+        async function saveProvider(data) {
+            try {
+                if (!data.id) delete data.id;
+                data.company_id = state.activeCompanyId;
+                
+                const { error } = await supabaseClient.from('proveedores').upsert(data, { onConflict: 'id' });
+                if (error) throw error;
+                console.log("✅ Proveedor guardado");
+            } catch (err) {
+                console.error("❌ Error guardando proveedor:", err.message);
+            }
+        }
+        
+        async function saveUser(data) {
+            try {
+                if (!data.id) delete data.id;
+                data.company_id = state.activeCompanyId;
+
+                const { error } = await supabaseClient.from('registros').upsert(data, { onConflict: 'id' });
+                if (error) throw error;
+                console.log("✅ Usuario guardado en Supabase");
+            } catch (err) {
+                console.error("❌ Error guardando usuario:", err.message);
+            }
+        }
+
+        // --- NAVEGACIÓN Y RENDERIZADO ---
+        const showPage = (pageId) => {
+            state.currentPage = pageId;
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${pageId}`).classList.add('active');
+            
+            // Sincronizar estado activo en ambos menús (desktop y móvil)
+            document.querySelectorAll('.nav-link, .dropdown-panel a').forEach(l => {
+                l.classList.remove('active');
+                l.closest('.dropdown')?.querySelector('.dropdown-toggle')?.classList.remove('active');
+            });
+            
+            const activeLink = document.querySelector(`[data-page="${pageId}"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+                const parentDropdown = activeLink.closest('.dropdown');
+                if (parentDropdown) {
+                    parentDropdown.querySelector('.dropdown-toggle').classList.add('active');
+                }
+            }
+        };
+        
+        const showInventoryTab = (tabId) => {
+            state.currentInventoryTab = tabId;
+            document.querySelectorAll('#inventory-content .tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`tab-content-${tabId}`).classList.add('active');
+            document.querySelectorAll('#inventory-nav .tab-link').forEach(l => l.classList.remove('active'));
+            document.querySelector(`#inventory-nav .tab-link[data-tab="${tabId}"]`).classList.add('active');
+        };
+
+        const renderAll = async () => {
+            renderDashboard();
+            renderUserCards();
+            renderInventoryTables();
+            renderMaintenanceTable();
+            renderProviderTable();
+            renderReportsPage();
+            await renderEmpresasPage();
+            populateUserFormSelects();
+        };
+
+        const renderDashboard = () => {
+            document.getElementById('stat-total-equipos').textContent = state.inventario.equipos.length;
+            document.getElementById('stat-total-usuarios').textContent = state.registros.length;
+            document.getElementById('stat-en-reparacion').textContent = state.inventario.equipos.filter(e => e.estado === 'En reparación').length;
+            
+            const licenciasUsadas = state.registros.flatMap(r => r.software_ids || []).length;
+            const licenciasTotales = state.inventario.software.reduce((sum, s) => sum + parseInt(s.stock || 0), 0);
+            document.getElementById('stat-licencias-disponibles').textContent = licenciasTotales - licenciasUsadas;
+
+            const chartContainer = document.getElementById('chart-estado-equipos');
+            chartContainer.innerHTML = '';
+            const statuses = ['Bueno', 'Regular', 'Malo', 'En reparación'];
+            const colors = { 'Bueno': 'bg-green-500', 'Regular': 'bg-yellow-500', 'Malo': 'bg-orange-500', 'En reparación': 'bg-red-500' };
+            const totalEquipos = state.inventario.equipos.length || 1;
+            statuses.forEach(status => {
+                const count = state.inventario.equipos.filter(e => e.estado === status).length;
+                const percentage = (count / totalEquipos) * 100;
+                chartContainer.innerHTML += `<div class="flex items-center"><span class="w-28 text-sm text-gray-600">${status}</span><div class="flex-1 bg-gray-200 rounded-full h-4"><div class="${colors[status]} h-4 rounded-full" style="width: ${percentage}%"></div></div><span class="w-12 text-right text-sm font-medium">${count}</span></div>`;
+            });
+
+            const now = new Date();
+            const ninetyDays = new Date();
+            ninetyDays.setDate(now.getDate() + 90);
+
+            const licensesContainer = document.getElementById('list-licencias-vencer');
+            licensesContainer.innerHTML = '';
+            const expiringLicenses = state.inventario.software.filter(s => s.fecha_vencimiento && new Date(s.fecha_vencimiento) <= ninetyDays);
+            if (expiringLicenses.length === 0) {
+                licensesContainer.innerHTML = '<p class="text-sm text-gray-500">No hay licencias próximas a vencer.</p>';
+            } else {
+                expiringLicenses.forEach(s => {
+                    const vencimiento = new Date(s.fecha_vencimiento);
+                    const diffDays = Math.ceil((vencimiento - now) / (1000 * 60 * 60 * 24));
+                    const color = diffDays <= 30 ? 'text-red-600 font-bold' : 'text-yellow-600';
+                    licensesContainer.innerHTML += `<div class="flex justify-between items-center text-sm"><p>${s.nombre}</p><p class="${color}">Vence en ${diffDays} días</p></div>`;
+                });
+            }
+            
+            const warrantiesContainer = document.getElementById('list-garantias-vencer');
+            warrantiesContainer.innerHTML = '';
+            const expiringWarranties = [
+                ...state.inventario.equipos,
+                ...state.inventario.perifericos
+            ].filter(a => a.fecha_vencimiento_garantia && new Date(a.fecha_vencimiento_garantia) <= ninetyDays);
+            if (expiringWarranties.length === 0) {
+                warrantiesContainer.innerHTML = '<p class="text-sm text-gray-500">No hay garantías próximas a vencer.</p>';
+            } else {
+                expiringWarranties.forEach(a => {
+                    const vencimiento = new Date(a.fecha_vencimiento_garantia);
+                    const diffDays = Math.ceil((vencimiento - now) / (1000 * 60 * 60 * 24));
+                    const color = diffDays <= 30 ? 'text-red-600 font-bold' : 'text-yellow-600';
+                    warrantiesContainer.innerHTML += `<div class="flex justify-between items-center text-sm"><p>${a.marca || ''} ${a.modelo || a.tipo}</p><p class="${color}">Vence en ${diffDays} días</p></div>`;
+                });
+            }
+
+            const activityContainer = document.getElementById('list-actividad-reciente');
+            activityContainer.innerHTML = '';
+            const allLogs = [
+                ...state.registros.flatMap(r => r.trazabilidad || []),
+                ...state.inventario.equipos.flatMap(e => e.trazabilidad || []),
+                ...state.inventario.software.flatMap(s => s.trazabilidad || []),
+                ...state.inventario.perifericos.flatMap(p => p.trazabilidad || [])
+            ].filter(log => log.accion !== 'Creación de Activo');
+            
+            allLogs.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+            const recentLogs = allLogs.slice(0, 5);
+            if(recentLogs.length === 0) {
+                activityContainer.innerHTML = '<p class="text-sm text-gray-500">No hay actividad reciente.</p>';
+            } else {
+                recentLogs.forEach(log => {
+                    activityContainer.innerHTML += `<div class="text-sm border-b pb-1"><p><span class="font-semibold">${log.accion}:</span> ${log.detalle}</p><p class="text-xs text-gray-400">${new Date(log.fecha).toLocaleString('es-CO')}</p></div>`;
+                });
+            }
+        };
+
+        const renderUserCards = () => {
+            const container = document.getElementById('user-cards-container');
+            container.innerHTML = '';
+            if (state.registros.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500 py-4 col-span-full">No hay usuarios registrados.</p>`;
+                return;
+            }
+            state.registros.forEach(user => {
+                const card = templates.userCard.content.cloneNode(true).firstElementChild;
+                const equipo = state.inventario.equipos.find(e => e.id == user.equipo_id);
+                card.querySelector('h3').textContent = user.nombre;
+                card.querySelector('p').textContent = user.cargo;
+                card.querySelector('.departamento').textContent = user.departamento || 'N/A';
+                card.querySelector('.cedula').textContent = user.cedula;
+                card.querySelector('.equipo').textContent = equipo ? `${equipo.marca} ${equipo.modelo}` : 'N/A';
+                card.querySelector('.view-user-btn').dataset.id = user.id;
+                card.querySelector('.edit-user-btn').dataset.id = user.id;
+                card.querySelector('.delete-user-btn').dataset.id = user.id;
+                container.appendChild(card);
+            });
+        };
+
+        const renderInventoryTables = (searchTerm = '', typeToRender = null) => {
+            if (typeToRender === 'equipos' || !typeToRender) {
+                const filtered = state.inventario.equipos.filter(item => (item.marca?.toLowerCase() || '').includes(searchTerm) || (item.modelo?.toLowerCase() || '').includes(searchTerm) || (item.numero_serie?.toLowerCase() || '').includes(searchTerm));
+                renderSpecificInventoryTable('equipos', ['Activo', 'Estado', 'Asignado a'], filtered);
+            }
+            if (typeToRender === 'software' || !typeToRender) {
+                 const filtered = state.inventario.software.filter(item => (item.nombre?.toLowerCase() || '').includes(searchTerm) || (item.tipo?.toLowerCase() || '').includes(searchTerm));
+                renderSpecificInventoryTable('software', ['Software', 'Versión', 'Uso/Stock'], filtered);
+            }
+            if (typeToRender === 'perifericos' || !typeToRender) {
+                const filtered = state.inventario.perifericos.filter(item => (item.tipo?.toLowerCase() || '').includes(searchTerm) || (item.marca?.toLowerCase() || '').includes(searchTerm));
+                renderSpecificInventoryTable('perifericos', ['Periférico', 'Estado', 'Asignado a'], filtered);
+            }
+        };
+        
+        const renderMaintenanceTable = (searchTerm = '') => {
+            const container = document.getElementById('maintenance-table-container');
+            container.innerHTML = '';
+            
+            const allMaintenanceLogs = state.inventario.equipos.flatMap(equipo => (equipo.trazabilidad || []).filter(log => log.accion === 'Mantenimiento').map(log => ({ ...log, equipo })));
+
+            const filtered = allMaintenanceLogs.filter(log => {
+                const equipo = log.equipo;
+                if (!equipo) return false;
+                const search = searchTerm.toLowerCase();
+                return (equipo.marca?.toLowerCase() || '').includes(search) || (equipo.modelo?.toLowerCase() || '').includes(search) || (equipo.numero_serie?.toLowerCase() || '').includes(search);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500 py-8">No hay registros de mantenimiento.</p>`;
+                return;
+            }
+            const table = document.createElement('table');
+            table.className = 'min-w-full';
+            table.innerHTML = `<thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Equipo</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Técnico</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Evidencia</th></tr></thead>`;
+            const tbody = document.createElement('tbody');
+            tbody.className = "bg-white divide-y divide-gray-200";
+            [...filtered].reverse().forEach(log => {
+                const equipo = log.equipo;
+                const evidenceHtml = log.imagen ? `<img src="${log.imagen}" alt="Evidencia" class="h-10 w-10 object-cover rounded-md cursor-pointer" onclick="window.open('${log.imagen}')">` : 'N/A';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm">${new Date(log.fecha).toLocaleDateString('es-CO')}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${equipo ? `${equipo.marca} ${equipo.modelo}` : 'N/A'}</td><td class="px-6 py-4 text-sm">${log.detalle}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${log.tecnico || 'N/A'}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${evidenceHtml}</td>`;
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            container.appendChild(table);
+        };
+        
+        const renderProviderTable = () => {
+            const container = document.getElementById('provider-table-container');
+            container.innerHTML = '';
+            if (state.proveedores.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500 py-8">No hay proveedores registrados.</p>`;
+                return;
+            }
+            const table = document.createElement('table');
+            table.className = 'min-w-full';
+            table.innerHTML = `<thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teléfono</th><th class="relative px-6 py-3"></th></tr></thead>`;
+            const tbody = document.createElement('tbody');
+            tbody.className = "bg-white divide-y divide-gray-200";
+            state.proveedores.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">${p.nombre}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${p.contacto || ''}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${p.telefono || ''}</td><td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button data-id="${p.id}" class="edit-provider-btn text-indigo-600 hover:text-indigo-900 mr-4">Editar</button><button data-id="${p.id}" class="delete-provider-btn text-red-600 hover:text-red-900">Eliminar</button></td>`;
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            container.appendChild(table);
+        };
+
+        const getAssignedUserName = (itemId, itemType) => {
+            const fieldMap = {
+                'equipos': 'equipo_id',
+                'perifericos': 'perifericos_ids'
+            };
+            const user = state.registros.find(r => {
+                const field = fieldMap[itemType];
+                if (Array.isArray(r[field])) {
+                    return r[field].includes(itemId);
+                }
+                return r[field] === itemId;
+            });
+            return user ? user.nombre : '<span class="text-green-600 font-medium">Disponible</span>';
+        };
+
+        const getSoftwareUsage = (softwareId) => {
+            const software = state.inventario.software.find(s => s.id === softwareId);
+            if (!software) return 'N/A';
+            const assignedCount = state.registros.filter(r => (r.software_ids || []).includes(softwareId)).length;
+            return `${assignedCount} / ${software.stock}`;
+        };
+
+        const renderSpecificInventoryTable = (type, headers, data) => {
+            const container = document.querySelector(`#tab-content-${type} > div.overflow-x-auto`);
+            container.innerHTML = '';
+            if (data.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500 py-8">No hay resultados.</p>`;
+                return;
+            }
+            const table = document.createElement('table');
+            table.className = 'min-w-full';
+            const thead = `<thead class="bg-gray-50"><tr>${headers.map(h => `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${h}</th>`).join('')}<th class="relative px-6 py-3"><span class="sr-only">Acciones</span></th></tr></thead>`;
+            const tbody = document.createElement('tbody');
+            tbody.className = "bg-white divide-y divide-gray-200";
+            data.forEach(item => {
+                let rowDataHtml = '';
+                if (type === 'equipos') rowDataHtml = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.marca} ${item.modelo}<p class="text-xs text-gray-500">S/N: ${item.numero_serie}</p></td><td class="px-6 py-4 whitespace-nowrap text-sm">${item.estado}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${getAssignedUserName(item.id, 'equipos')}</td>`;
+                if (type === 'software') rowDataHtml = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.nombre}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${item.version || 'N/A'}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${getSoftwareUsage(item.id)}</td>`;
+                if (type === 'perifericos') rowDataHtml = `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.tipo} <p class="text-xs text-gray-500">${item.marca || ''} ${item.modelo || ''}</p></td><td class="px-6 py-4 whitespace-nowrap text-sm">${item.estado}</td><td class="px-6 py-4 whitespace-nowrap text-sm">${getAssignedUserName(item.id, 'perifericos')}</td>`;
+                
+                const singularType = type === 'software' ? 'software' : type.slice(0, -1);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `${rowDataHtml}<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button data-id="${item.id}" data-type="${singularType}" class="view-asset-btn text-gray-600 hover:text-indigo-900 mr-4">Detalles</button>
+                    <button data-id="${item.id}" data-type="${singularType}" class="edit-inventory-btn text-indigo-600 hover:text-indigo-900 mr-4">Editar</button>
+                    <button data-id="${item.id}" data-type="${singularType}" class="delete-inventory-btn text-red-600 hover:text-red-900">Eliminar</button>
+                </td>`;
+                tbody.appendChild(tr);
+            });
+            table.innerHTML = thead;
+            table.appendChild(tbody);
+            container.appendChild(table);
+        };
+
+        const populateUserFormSelects = () => {
+            const assignedEquipmentIds = state.registros.filter(r => r.id !== state.editingUserId && r.equipo_id).map(r => r.equipo_id);
+            mainSelects.equipo.innerHTML = '<option value="">-- Seleccione un equipo --</option>';
+            state.inventario.equipos.forEach(e => {
+                const isAssigned = assignedEquipmentIds.includes(e.id);
+                mainSelects.equipo.innerHTML += `<option value="${e.id}" ${isAssigned ? 'disabled' : ''}>${e.marca} ${e.modelo} (S/N: ${e.numero_serie}) ${isAssigned ? '- Asignado' : ''}</option>`;
+            });
+            mainSelects.software.innerHTML = '';
+            state.inventario.software.forEach(s => mainSelects.software.innerHTML += `<option value="${s.id}">${s.nombre} ${s.version || ''}</option>`);
+            mainSelects.perifericos.innerHTML = '';
+            state.inventario.perifericos.forEach(p => mainSelects.perifericos.innerHTML += `<option value="${p.id}">${p.tipo} - ${p.marca} ${p.modelo || ''}</option>`);
+        };
+
+        // --- MANEJO DE MODALES ---
+        const openInventoryModal = async (type, id = null) => {
+            state.editingInventoryType = type;
+            state.editingInventoryId = id ? parseInt(id) : null;
+            const title = `${id ? 'Editar' : 'Añadir'} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            document.getElementById('modal-inventory-title').textContent = title;
+            const template = templates[type];
+            if (!template) return;
+            inventoryForm.innerHTML = template.innerHTML;
+
+            const providerSelect = inventoryForm.querySelector('select[name="proveedor_id"]');
+            if (providerSelect) {
+                providerSelect.innerHTML = '<option value="">-- Sin Proveedor --</option>';
+                state.proveedores.forEach(p => {
+                    providerSelect.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+                });
+            }
+
+            if (id) {
+                const typePlural = type === 'software' ? 'software' : type + 's';
+                const item = state.inventario[typePlural].find(i => i.id == id);
+                if (item) {
+                    for (const key in item) {
+                        if (inventoryForm.elements[key] && inventoryForm.elements[key].type !== 'file') {
+                            inventoryForm.elements[key].value = item[key] === null ? '' : item[key];
+                        }
+                    }
+                }
+            }
+            inventoryModal.showModal();
+        };
+
+        const openUserDetailModal = (userId) => {
+            const user = state.registros.find(u => u.id == userId);
+            if (!user) return;
+            document.getElementById('modal-user-title').textContent = `Hoja de Vida de ${user.nombre}`;
+            const content = document.getElementById('user-detail-content');
+            
+            const induccionStatus = user.induccion_tic ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Sí</span>' : '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">No</span>';
+            const cuentasHtml = user.cuentas_creadas ? `<pre class="bg-gray-50 p-3 rounded-md text-sm whitespace-pre-wrap font-sans">${user.cuentas_creadas}</pre>` : '<p class="text-sm text-gray-500">No hay cuentas registradas.</p>';
+
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mb-4">
+                    <div><p class="text-sm font-medium text-gray-500">Cargo</p><p>${user.cargo || 'N/A'}</p></div>
+                    <div><p class="text-sm font-medium text-gray-500">Departamento</p><p>${user.departamento || 'N/A'}</p></div>
+                    <div><p class="text-sm font-medium text-gray-500">Cédula</p><p>${user.cedula || 'N/A'}</p></div>
+                    <div><p class="text-sm font-medium text-gray-500">Fecha de Ingreso</p><p>${user.fecha_ingreso ? new Date(user.fecha_ingreso).toLocaleDateString('es-CO', {timeZone: 'UTC'}) : 'N/A'}</p></div>
+                </div>
+                <div class="border-t pt-4 mb-6">
+                    <h4 class="font-semibold text-lg mb-2">Inducción y Cuentas</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                        <div><p class="text-sm font-medium text-gray-500">Inducción TIC Completada</p>${induccionStatus}</div>
+                        <div><p class="text-sm font-medium text-gray-500 mb-1">Cuentas de Usuario</p>${cuentasHtml}</div>
+                    </div>
+                </div>
+                <div class="border-b border-gray-200 mb-4"><nav class="flex space-x-4" id="user-detail-nav"><a data-tab="activos" class="tab-link active">Activos Asignados</a><a data-tab="trazabilidad" class="tab-link">Trazabilidad y Mantenimiento</a></nav></div>
+                <div id="user-detail-tab-content"></div>
+            `;
+            const tabContainer = content.querySelector('#user-detail-tab-content');
+            const nav = content.querySelector('#user-detail-nav');
+            const exportBtn = document.getElementById('export-pdf-btn');
+            if (exportBtn) exportBtn.dataset.userId = userId;
+
+            const showUserDetailTab = (tabId) => {
+                nav.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+                nav.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+                if (tabId === 'activos') {
+                    let assetsHtml = '<div class="space-y-6">';
+                    const equipo = state.inventario.equipos.find(e => e.id == user.equipo_id);
+                    assetsHtml += '<div><h4 class="font-semibold text-lg mb-2 border-b pb-1">Equipo Principal</h4>';
+                    if (equipo) assetsHtml += `<ul class="text-sm list-disc list-inside"><li><b>Activo:</b> ${equipo.marca} ${equipo.modelo}</li><li><b>S/N:</b> ${equipo.numero_serie}</li></ul>`;
+                    else assetsHtml += '<p class="text-sm text-gray-500">No hay equipo asignado.</p>';
+                    assetsHtml += '</div>';
+                    assetsHtml += '<div><h4 class="font-semibold text-lg mb-2 border-b pb-1">Software</h4>';
+                    const softwareList = (user.software_ids || []).map(id => state.inventario.software.find(s => s.id == id)).filter(Boolean);
+                    if(softwareList.length > 0) assetsHtml += `<ul class="text-sm list-disc list-inside">${softwareList.map(s => `<li>${s.nombre} ${s.version || ''}</li>`).join('')}</ul>`;
+                    else assetsHtml += '<p class="text-sm text-gray-500">No hay software asignado.</p>';
+                    assetsHtml += '</div>';
+                    assetsHtml += '<div><h4 class="font-semibold text-lg mb-2 border-b pb-1">Periféricos</h4>';
+                    const perifericosList = (user.perifericos_ids || []).map(id => state.inventario.perifericos.find(p => p.id == id)).filter(Boolean);
+                    if(perifericosList.length > 0) assetsHtml += `<ul class="text-sm list-disc list-inside">${perifericosList.map(p => `<li>${p.tipo} - ${p.marca} ${p.modelo || ''}</li>`).join('')}</ul>`;
+                    else assetsHtml += '<p class="text-sm text-gray-500">No hay periféricos asignado.</p>';
+                    assetsHtml += '</div></div>';
+                    tabContainer.innerHTML = assetsHtml;
+                } else if (tabId === 'trazabilidad') {
+                    let historyHtml = `<div class="overflow-y-auto max-h-96"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acción</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Detalle</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Evidencia</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
+                    if (user.trazabilidad && user.trazabilidad.length > 0) {
+                        [...user.trazabilidad].reverse().forEach(log => {
+                            const evidenceHtml = log.imagen ? `<img src="${log.imagen}" alt="Evidencia" class="h-10 w-10 object-cover rounded-md cursor-pointer" onclick="window.open('${log.imagen}')">` : 'N/A';
+                            historyHtml += `<tr><td class="px-4 py-3 text-sm whitespace-nowrap">${new Date(log.fecha).toLocaleString('es-CO')}</td><td class="px-4 py-3 text-sm">${log.accion}</td><td class="px-4 py-3 text-sm">${log.detalle}</td><td class="px-4 py-3 text-sm">${evidenceHtml}</td></tr>`;
+                        });
+                    } else {
+                        historyHtml += '<tr><td colspan="4" class="text-center py-4 text-gray-500">No hay historial.</td></tr>';
+                    }
+                    historyHtml += '</tbody></table></div>';
+                    tabContainer.innerHTML = historyHtml;
+                }
+            };
+            nav.addEventListener('click', e => { if (e.target.matches('.tab-link')) showUserDetailTab(e.target.dataset.tab); });
+            showUserDetailTab('activos');
+            userDetailModal.showModal();
+        };
+
+        const openAssetDetailModal = (assetId, assetType) => {
+            const typePlural = assetType === 'software' ? 'software' : assetType + 's';
+            const asset = state.inventario[typePlural].find(a => a.id == assetId);
+            if (!asset) return;
+            document.getElementById('modal-asset-title').textContent = `Detalles de ${asset.nombre || (asset.marca ? asset.marca + ' ' + (asset.modelo || '') : asset.tipo)}`;
+            const content = document.getElementById('asset-detail-content');
+            
+            const provider = state.proveedores.find(p => p.id == asset.proveedor_id);
+
+            let detailsHtml = `<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-1"><img src="${asset.imagen || 'https://placehold.co/400x300/e2e8f0/cbd5e0?text=Sin+Imagen'}" alt="Imagen del activo" class="rounded-lg shadow-md w-full"></div>
+                <div class="md:col-span-2 space-y-2">
+                    <h4 class="font-semibold text-lg border-b pb-1">Información General</h4>`;
+            for(const [key, value] of Object.entries(asset)) {
+                if(!['id', 'trazabilidad', 'imagen', 'proveedor_id', 'numero_factura', 'fecha_compra', 'fecha_vencimiento_garantia', 'fecha_vencimiento', 'factura_pdf_url', 'company_id'].includes(key)) {
+                    detailsHtml += `<p class="text-sm"><strong class="capitalize">${key.replace(/_/g, ' ')}:</strong> ${value || 'N/A'}</p>`;
+                }
+            }
+            detailsHtml += `<h4 class="font-semibold text-lg border-b pb-1 mt-4">Información de Compra</h4>
+                <p class="text-sm"><strong>Proveedor:</strong> ${provider ? provider.nombre : 'N/A'}</p>
+                <p class="text-sm"><strong>Factura N°:</strong> ${asset.numero_factura || 'N/A'}</p>
+                ${asset.factura_pdf_url ? `<p class="text-sm"><strong>Factura PDF:</strong> <a href="${asset.factura_pdf_url}" target="_blank" class="text-blue-600 hover:underline">Ver Factura</a></p>` : ''}
+                <p class="text-sm"><strong>Fecha Compra:</strong> ${asset.fecha_compra ? new Date(asset.fecha_compra).toLocaleDateString('es-CO', {timeZone: 'UTC'}) : 'N/A'}</p>
+                ${asset.fecha_vencimiento_garantia ? `<p class="text-sm"><strong>Garantía Vence:</strong> ${new Date(asset.fecha_vencimiento_garantia).toLocaleDateString('es-CO', {timeZone: 'UTC'})}</p>` : ''}
+                ${asset.fecha_vencimiento ? `<p class="text-sm"><strong>Licencia Vence:</strong> ${new Date(asset.fecha_vencimiento).toLocaleDateString('es-CO', {timeZone: 'UTC'})}</p>` : ''}
+            `;
+
+            detailsHtml += `</div></div><hr class="my-6"><h4 class="font-semibold text-lg mb-2">Historial del Activo</h4>`;
+            detailsHtml += `<div class="overflow-y-auto max-h-64"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acción</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Detalle</th><th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Evidencia</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
+            if (asset.trazabilidad && asset.trazabilidad.length > 0) {
+                [...asset.trazabilidad].reverse().forEach(log => {
+                    const evidenceHtml = log.imagen ? `<img src="${log.imagen}" alt="Evidencia" class="h-10 w-10 object-cover rounded-md cursor-pointer" onclick="window.open('${log.imagen}')">` : 'N/A';
+                    detailsHtml += `<tr><td class="px-4 py-3 text-sm whitespace-nowrap">${new Date(log.fecha).toLocaleString('es-CO')}</td><td class="px-4 py-3 text-sm">${log.accion}</td><td class="px-4 py-3 text-sm">${log.detalle}</td><td class="px-4 py-3 text-sm">${evidenceHtml}</td></tr>`;
+                });
+            } else {
+                detailsHtml += '<tr><td colspan="4" class="text-center py-4 text-gray-500">No hay historial para este activo.</td></tr>';
+            }
+            detailsHtml += '</tbody></table></div>';
+            content.innerHTML = detailsHtml;
+            assetDetailModal.showModal();
+        };
+
+        const openMaintenanceModal = () => {
+            maintenanceForm.innerHTML = templates.maintenance.innerHTML;
+            const select = maintenanceForm.querySelector('select[name="equipo_id"]');
+            select.innerHTML = '<option value="">-- Seleccione un equipo --</option>';
+            state.inventario.equipos.forEach(e => {
+                select.innerHTML += `<option value="${e.id}">${e.marca} ${e.modelo} (S/N: ${e.numero_serie})</option>`;
+            });
+            maintenanceModal.showModal();
+        };
+        
+        const openProviderModal = (id = null) => {
+            state.editingProviderId = id ? parseInt(id) : null;
+            document.getElementById('modal-provider-title').textContent = id ? 'Editar Proveedor' : 'Añadir Proveedor';
+            providerForm.innerHTML = templates.provider.innerHTML;
+            if (id) {
+                const provider = state.proveedores.find(p => p.id == id);
+                if (provider) {
+                    for (const key in provider) {
+                        if (providerForm.elements[key]) providerForm.elements[key].value = provider[key];
+                    }
+                }
+            }
+            providerModal.showModal();
+        };
+
+        // --- MANEJO DE EVENTOS ---
+        
+        // Evento unificado para navegación (desktop y móvil)
+        document.getElementById('app-container').addEventListener('click', e => {
+            const link = e.target.closest('a[data-page]');
+            if (link) {
+                e.preventDefault();
+                showPage(link.dataset.page);
+            }
+        });
+
+        inventoryNav.addEventListener('click', e => { if (e.target.matches('.tab-link')) showInventoryTab(e.target.dataset.tab); });
+        document.querySelectorAll('.inventory-search-input').forEach(input => { input.addEventListener('input', e => renderInventoryTables(e.target.value.toLowerCase(), e.target.dataset.type)); });
+        document.getElementById('maintenance-search-input').addEventListener('input', e => renderMaintenanceTable(e.target.value.toLowerCase()));
+        
+        document.body.addEventListener('click', async e => {
+            const target = e.target.closest('button');
+            if (!target) return;
+            if (target.matches('.add-inventory-btn')) openInventoryModal(target.dataset.type);
+            if (target.matches('.edit-inventory-btn')) openInventoryModal(target.dataset.type, target.dataset.id);
+            if (target.matches('.delete-inventory-btn')) handleDeleteInventory(parseInt(target.dataset.id), target.dataset.type);
+            if (target.matches('.view-asset-btn')) openAssetDetailModal(parseInt(target.dataset.id), target.dataset.type);
+            if (target.matches('.view-user-btn')) openUserDetailModal(parseInt(target.dataset.id));
+            if (target.matches('.edit-user-btn')) handleEditUser(parseInt(target.dataset.id));
+            if (target.matches('.delete-user-btn')) handleDeleteUser(parseInt(target.dataset.id));
+            if (target.matches('#add-maintenance-btn')) openMaintenanceModal();
+            if (target.matches('#add-provider-btn')) openProviderModal();
+            if (target.matches('.edit-provider-btn')) openProviderModal(target.dataset.id);
+            if (target.matches('.delete-provider-btn')) handleDeleteProvider(parseInt(target.dataset.id));
+            if (target.matches('.export-csv-btn')) handleExportCsv(target.dataset.type);
+            if (target.matches('#export-pdf-btn')) exportUserToPdf(parseInt(target.dataset.userId));
+            if (target.matches('.import-csv-btn')) openImportModal(target.dataset.type);
+            if (target.matches('#import-users-btn')) openImportModal('registros');
+            if (target.matches('#add-company-btn')) companyModal.showModal();
+            if (target.matches('.invite-user-btn')) openInviteModal(target.dataset.companyId);
+            
+            // Flujo para aceptar invitación
+            if (target.matches('.accept-invite-btn')) {
+                const companyId = target.dataset.companyId;
+                const { data, error } = await supabaseClient.functions.invoke('accept-invitation', {
+                    body: { company_id: companyId },
+                });
+
+                if (error || (data && data.error)) {
+                    const errorMessage = (data && data.error) ? data.error : error.message;
+                    console.error("Error accepting invite:", errorMessage);
+                    showToast("Error al aceptar la invitación: " + errorMessage, 'error');
+                } else {
+                    showToast("¡Te has unido a la empresa!");
+                    await loadUserCompaniesAndInvitations();
+                }
+            }
+
+            // Flujo para rechazar invitación
+            if (target.matches('.decline-invite-btn')) {
+                const companyId = target.dataset.companyId;
+                openConfirmModal('¿Estás seguro de que quieres rechazar esta invitación?', async () => {
+                    const { data, error } = await supabaseClient.functions.invoke('decline-invitation', {
+                        body: { company_id: companyId },
+                    });
+
+                    if (error || (data && data.error)) {
+                        const errorMessage = (data && data.error) ? data.error : error.message;
+                        console.error("Error declining invite:", errorMessage);
+                        showToast("Error al rechazar la invitación: " + errorMessage, 'error');
+                    } else {
+                        showToast("Invitación rechazada.");
+                        await loadUserCompaniesAndInvitations();
+                    }
+                });
+            }
+
+            // Flujo para eliminar empresa
+            if (target.matches('.delete-company-btn')) {
+                const companyId = target.dataset.companyId;
+                const company = state.companies.find(c => c.id == companyId);
+                openDeleteCompanyModal(company);
+            }
+
+            // Flujo para salir de una empresa
+            if (target.matches('.leave-company-btn')) {
+                const companyId = target.dataset.companyId;
+                const company = state.companies.find(c => c.id == companyId);
+                openConfirmModal(`¿Estás seguro de que quieres salir de la empresa "${company.name}"?`, async () => {
+                    const { data, error } = await supabaseClient.functions.invoke('leave-company', {
+                        body: { company_id: companyId },
+                    });
+
+                    if (error || (data && data.error)) {
+                        const errorMessage = (data && data.error) ? data.error : error.message;
+                        console.error("Error leaving company:", errorMessage);
+                        showToast("Error al salir de la empresa: " + errorMessage, 'error');
+                    } else {
+                        showToast(`Has salido de la empresa "${company.name}".`);
+                        await loadUserCompaniesAndInvitations();
+                        if (state.activeCompanyId == companyId) {
+                            await loadData();
+                        }
+                    }
+                });
+            }
+        });
+
+        document.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            e.target.closest('dialog').close();
+        }));
+
+        inventoryForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const formData = new FormData(inventoryForm);
+            const data = Object.fromEntries(formData.entries());
+            data.id = state.editingInventoryId;
+            const type = state.editingInventoryType;
+            const typePlural = type === 'software' ? 'software' : type + 's';
+            
+            const imageFile = formData.get('imagen');
+            const facturaFile = formData.get('factura_pdf');
+
+            // Manejar la subida de la imagen
+            if (imageFile && imageFile.size > 0) {
+                data.imagen = await uploadFile(imageFile, 'activos');
+            } else if (state.editingInventoryId) {
+                const existingItem = state.inventario[typePlural].find(i => i.id == state.editingInventoryId);
+                data.imagen = existingItem?.imagen || null;
+            } else {
+                data.imagen = null;
+            }
+
+            // Manejar la subida del PDF
+            if (type === 'equipo') {
+                if (facturaFile && facturaFile.size > 0) {
+                    data.factura_pdf_url = await uploadFile(facturaFile, 'facturas');
+                } else if (state.editingInventoryId) {
+                    const existingItem = state.inventario[typePlural].find(i => i.id == state.editingInventoryId);
+                    data.factura_pdf_url = existingItem?.factura_pdf_url || null;
+                }
+            }
+            
+            delete data.factura_pdf;
+            
+            data.costo = parseFloat(data.costo) || 0;
+            if (data.stock) data.stock = parseInt(data.stock);
+            data.proveedor_id = data.proveedor_id ? parseInt(data.proveedor_id) : null;
+
+            const existingItem = state.editingInventoryId ? state.inventario[typePlural].find(i => i.id == data.id) : null;
+            data.trazabilidad = existingItem?.trazabilidad || [];
+            const action = state.editingInventoryId ? 'Actualización de Activo' : 'Creación de Activo';
+            const detail = state.editingInventoryId ? `Se actualizó el activo en inventario.` : `Activo creado en inventario.`;
+            data.trazabilidad.push({ fecha: new Date().toISOString(), accion: action, detalle: detail });
+
+            await saveInventoryItem(type, data);
+            await loadData();
+            inventoryModal.close();
+        });
+
+        maintenanceForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const formData = new FormData(maintenanceForm);
+            const data = Object.fromEntries(formData.entries());
+            const imageFile = formData.get('imagen');
+            let imageUrl = null;
+            if (imageFile && imageFile.size > 0) {
+                imageUrl = await uploadFile(imageFile, 'evidencias');
+            }
+        
+            const equipoId = parseInt(data.equipo_id);
+            const equipo = state.inventario.equipos.find(e => e.id === equipoId);
+            if (!equipo) return;
+        
+            const logEntry = {
+                fecha: data.fecha || new Date().toISOString(),
+                accion: 'Mantenimiento',
+                detalle: data.descripcion,
+                imagen: imageUrl,
+                tecnico: data.tecnico
+            };
+        
+            if (!equipo.trazabilidad) equipo.trazabilidad = [];
+            equipo.trazabilidad.push(logEntry);
+        
+            try {
+                const { error: equipoError } = await supabaseClient
+                    .from('equipos')
+                    .update({ trazabilidad: equipo.trazabilidad })
+                    .eq('id', equipoId);
+            
+                if (equipoError) throw equipoError;
+                console.log("✅ Trazabilidad del equipo actualizada.");
+            
+                const user = state.registros.find(r => r.equipo_id === equipoId);
+                if (user) {
+                    if (!user.trazabilidad) user.trazabilidad = [];
+                    user.trazabilidad.push(logEntry);
+                    const { error: userError } = await supabaseClient
+                        .from('registros')
+                        .update({ trazabilidad: user.trazabilidad })
+                        .eq('id', user.id);
+                    
+                    if (userError) throw userError;
+                    console.log("✅ Trazabilidad del usuario actualizada.");
+                }
+            
+                await loadData();
+                maintenanceModal.close();
+            
+            } catch (err) {
+                console.error("❌ Error al registrar mantenimiento:", err.message);
+                showToast("Error al registrar el mantenimiento: " + err.message, 'error');
+            }
+        });
+        
+        providerForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const formData = new FormData(providerForm);
+            const data = Object.fromEntries(formData.entries());
+            data.id = state.editingProviderId;
+        
+            await saveProvider(data);
+            await loadData();
+            providerModal.close();
+        });
+        
+        userForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const formData = new FormData(userForm);
+            const data = {
+                id: state.editingUserId,
+                nombre: formData.get('nombre'),
+                cargo: formData.get('cargo'),
+                departamento: formData.get('departamento'),
+                cedula: formData.get('cedula'),
+                fecha_ingreso: formData.get('fecha_ingreso'),
+                induccion_tic: formData.has('induccion_tic'),
+                cuentas_creadas: formData.get('cuentas_creadas'),
+                equipo_id: formData.get('equipo_id') ? parseInt(formData.get('equipo_id')) : null,
+                software_ids: formData.getAll('software_ids').map(Number),
+                perifericos_ids: formData.getAll('perifericos_ids').map(Number)
+            };
+            
+            const oldUser = state.editingUserId ? state.registros.find(r => r.id == state.editingUserId) : { equipo_id: null, software_ids: [], perifericos_ids: [] };
+            data.trazabilidad = oldUser.trazabilidad || [];
+            
+            checkAssetChanges(oldUser, data);
+
+            await saveUser(data);
+            await loadData();
+            resetUserForm();
+            showPage('hojas-de-vida');
+        });
+        
+        document.getElementById('cancel-edit-btn').addEventListener('click', resetUserForm);
+
+        // --- LÓGICA DE MANEJO ---
+        const logTrazabilidad = (log) => {
+            const { userId, assetId, assetType, accion, detalle } = log;
+            const logEntry = { fecha: new Date().toISOString(), accion, detalle };
+            
+            if (userId) {
+                const user = state.registros.find(r => r.id === userId);
+                if (user) {
+                    if (!user.trazabilidad) user.trazabilidad = [];
+                    user.trazabilidad.push(logEntry);
+                }
+            }
+            if (assetId && assetType) {
+                const typePlural = assetType === 'software' ? 'software' : assetType + 's';
+                const asset = state.inventario[typePlural].find(a => a.id === assetId);
+                if (asset) {
+                    if (!asset.trazabilidad) asset.trazabilidad = [];
+                    asset.trazabilidad.push(logEntry);
+                }
+            }
+        };
+
+        const checkAssetChanges = (oldUser, newUser) => {
+            const findItemName = (type, id) => {
+                const item = state.inventario[type].find(i => i.id == id);
+                if (!item) return `ID ${id}`;
+                return item.nombre || `${item.marca || ''} ${item.modelo || item.tipo}`;
+            };
+
+            if (oldUser.equipo_id != newUser.equipo_id) {
+                if (oldUser.equipo_id) {
+                    const detalle = `Se desasigna equipo: ${findItemName('equipos', oldUser.equipo_id)}`;
+                    logTrazabilidad({ userId: newUser.id, assetId: oldUser.equipo_id, assetType: 'equipo', accion: 'Desasigna Equipo', detalle: `Se quita a ${newUser.nombre}` });
+                    newUser.trazabilidad.push({ fecha: new Date().toISOString(), accion: 'Desasigna Equipo', detalle });
+                }
+                if (newUser.equipo_id) {
+                    const detalle = `Se asigna equipo: ${findItemName('equipos', newUser.equipo_id)}`;
+                    logTrazabilidad({ userId: newUser.id, assetId: newUser.equipo_id, assetType: 'equipo', accion: 'Asigna Equipo', detalle: `Asignado a ${newUser.nombre}` });
+                    newUser.trazabilidad.push({ fecha: new Date().toISOString(), accion: 'Asigna Equipo', detalle });
+                }
+            }
+            
+            const oldSoftware = new Set(oldUser.software_ids || []);
+            const newSoftware = new Set(newUser.software_ids || []);
+            for (const id of oldSoftware) if (!newSoftware.has(id)) {
+                const detalle = `Se desasigna software: ${findItemName('software', id)}`;
+                logTrazabilidad({ userId: newUser.id, assetId: id, assetType: 'software', accion: 'Desasigna Software', detalle: `Se quita a ${newUser.nombre}` });
+                newUser.trazabilidad.push({ fecha: new Date().toISOString(), accion: 'Desasigna Software', detalle });
+            }
+            for (const id of newSoftware) if (!oldSoftware.has(id)) {
+                const detalle = `Se asigna software: ${findItemName('software', id)}`;
+                logTrazabilidad({ userId: newUser.id, assetId: id, assetType: 'software', accion: 'Asigna Software', detalle: `Asignado a ${newUser.nombre}` });
+                newUser.trazabilidad.push({ fecha: new Date().toISOString(), accion: 'Asigna Software', detalle });
+            }
+
+            const oldPerifericos = new Set(oldUser.perifericos_ids || []);
+            const newPerifericos = new Set(newUser.perifericos_ids || []);
+            for (const id of oldPerifericos) if (!newPerifericos.has(id)) {
+                const detalle = `Se desasigna periférico: ${findItemName('perifericos', id)}`;
+                logTrazabilidad({ userId: newUser.id, assetId: id, assetType: 'periferico', accion: 'Desasigna Periférico', detalle: `Se quita a ${newUser.nombre}` });
+                newUser.trazabilidad.push({ fecha: new Date().toISOString(), accion: 'Desasigna Periférico', detalle });
+            }
+            for (const id of newPerifericos) if (!oldPerifericos.has(id)) {
+                const detalle = `Se asigna periférico: ${findItemName('perifericos', id)}`;
+                logTrazabilidad({ userId: newUser.id, assetId: id, assetType: 'periferico', accion: 'Asigna Periférico', detalle: `Asignado a ${newUser.nombre}` });
+                newUser.trazabilidad.push({ fecha: new Date().toISOString(), accion: 'Asigna Periférico', detalle });
+            }
+        };
+
+        function handleEditUser(id) {
+            const user = state.registros.find(r => r.id == id);
+            if (!user) return;
+            state.editingUserId = id;
+            populateUserFormSelects();
+            userForm.nombre.value = user.nombre;
+            userForm.cargo.value = user.cargo;
+            userForm.departamento.value = user.departamento;
+            userForm.cedula.value = user.cedula;
+            userForm['fecha_ingreso'].value = user.fecha_ingreso;
+            userForm.induccion_tic.checked = user.induccion_tic;
+            userForm.cuentas_creadas.value = user.cuentas_creadas || '';
+            userForm.equipo_id.value = user.equipo_id || '';
+            Array.from(userForm.software_ids.options).forEach(opt => opt.selected = (user.software_ids || []).includes(parseInt(opt.value)));
+            Array.from(userForm.perifericos_ids.options).forEach(opt => opt.selected = (user.perifericos_ids || []).includes(parseInt(opt.value)));
+            document.getElementById('form-title').textContent = 'Editando Usuario';
+            document.getElementById('submit-btn').textContent = 'Actualizar Registro';
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+            showPage('registro');
+        }
+
+        async function handleDeleteUser(userId) {
+            openConfirmModal('¿Estás seguro de que quieres eliminar este usuario y desasignar todos sus activos?', async () => {
+                try {
+                    const { error } = await supabaseClient.from('registros').delete().eq('id', userId);
+                    if (error) throw error;
+                    await loadData();
+                    showToast('Usuario eliminado correctamente.');
+                } catch (err) {
+                    console.error("Error eliminando usuario:", err.message);
+                    showToast(`Error eliminando usuario: ${err.message}`, 'error');
+                }
+            });
+        }
+        
+        async function handleDeleteInventory(itemId, itemType) {
+            const isAssigned = state.registros.some(r => 
+                (itemType === 'equipo' && r.equipo_id === itemId) ||
+                (itemType === 'software' && (r.software_ids || []).includes(itemId)) ||
+                (itemType === 'periferico' && (r.perifericos_ids || []).includes(itemId))
+            );
+            if (isAssigned) {
+                showToast('No se puede eliminar este activo porque está asignado a un usuario. Por favor, desasígnelo primero.', 'error');
+                return;
+            }
+            
+            openConfirmModal('¿Estás seguro de que quieres eliminar este activo del inventario?', async () => {
+                try {
+                    const table = itemType === 'software' ? 'software' : itemType + 's';
+                    const { error } = await supabaseClient.from(table).delete().eq('id', itemId);
+                    if (error) throw error;
+                    await loadData();
+                    showToast('Activo eliminado correctamente.');
+                } catch (err) {
+                    console.error("Error eliminando activo:", err.message);
+                    showToast(`Error eliminando activo: ${err.message}`, 'error');
+                }
+            });
+        }
+        
+        async function handleDeleteProvider(providerId) {
+             const isUsed = [
+                ...state.inventario.equipos,
+                ...state.inventario.software,
+                ...state.inventario.perifericos
+            ].some(item => item.proveedor_id === providerId);
+
+            if (isUsed) {
+                showToast('No se puede eliminar este proveedor porque está asociado a uno o más activos.', 'error');
+                return;
+            }
+            
+            openConfirmModal('¿Estás seguro de que quieres eliminar este proveedor?', async () => {
+                try {
+                    const { error } = await supabaseClient.from('proveedores').delete().eq('id', providerId);
+                    if (error) throw error;
+                    await loadData();
+                    showToast('Proveedor eliminado correctamente.');
+                } catch (err) {
+                    console.error("Error eliminando proveedor:", err.message);
+                    showToast(`Error eliminando proveedor: ${err.message}`, 'error');
+                }
+            });
+        }
+        
+        function resetUserForm() {
+            state.editingUserId = null;
+            userForm.reset();
+            document.getElementById('form-title').textContent = 'Nuevo Registro de Usuario';
+            document.getElementById('submit-btn').textContent = 'Guardar Registro';
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+            populateUserFormSelects();
+        }
+        
+        const uploadFile = async (file, bucket) => {
+            if (!file || file.size === 0) return null;
+            const fileName = `${state.user.id}/${state.activeCompanyId}/${Date.now()}-${file.name.replace(/ /g, '_')}`;
+            try {
+                const { error: uploadError } = await supabaseClient.storage
+                    .from(bucket)
+                    .upload(fileName, file); 
+
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabaseClient.storage
+                    .from(bucket)
+                    .getPublicUrl(fileName);
+                
+                console.log(`✅ Archivo subido a ${bucket}: ${urlData.publicUrl}`);
+                return urlData.publicUrl;
+            } catch (error) {
+                console.error(`Error subiendo archivo a ${bucket}:`, error.message);
+                showToast(`Error al subir el archivo: ${error.message}`, 'error');
+                return null;
+            }
+        };
+
+        // --- FUNCIONES DE EXPORTACIÓN / IMPORTACIÓN ---
+        const handleExportCsv = (type) => {
+            const items = state.inventario[type];
+            if (items.length === 0) {
+                showToast(`No hay ${type} para exportar.`, 'info');
+                return;
+            }
+            const headers = Object.keys(items[0]).filter(k => k !== 'trazabilidad' && k !== 'imagen' && k !== 'factura_pdf_url' && k !== 'company_id');
+            const rows = items.map(item => headers.map(header => JSON.stringify(item[header])).join(','));
+            
+            let csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `inventario_${type}_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        const exportUserToPdf = (userId) => {
+            const user = state.registros.find(u => u.id == userId);
+            if (!user) return;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(18);
+            doc.text(`Hoja de Vida: ${user.nombre}`, 14, 22);
+            doc.setFontSize(11);
+            doc.text(`Cargo: ${user.cargo}`, 14, 30);
+            doc.text(`Departamento: ${user.departamento || 'N/A'}`, 14, 36);
+            doc.text(`Cédula: ${user.cedula}`, 14, 42);
+            doc.text(`Inducción TIC: ${user.induccion_tic ? 'Sí' : 'No'}`, 14, 48);
+
+            let finalY = 58;
+
+            if (user.cuentas_creadas) {
+                 doc.autoTable({
+                    startY: finalY,
+                    head: [['Cuentas de Usuario Creadas']],
+                    body: [[user.cuentas_creadas]],
+                    theme: 'grid'
+                });
+                finalY = doc.lastAutoTable.finalY + 10;
+            }
+
+            const equipo = state.inventario.equipos.find(e => e.id == user.equipo_id);
+            if (equipo) {
+                doc.autoTable({
+                    startY: finalY,
+                    head: [['Equipo Principal Asignado']],
+                    body: [
+                        [`Marca/Modelo: ${equipo.marca} ${equipo.modelo}`],
+                        [`Número de Serie: ${equipo.numero_serie}`]
+                    ],
+                    theme: 'grid'
+                });
+                finalY = doc.lastAutoTable.finalY + 10;
+            }
+            
+            const software = (user.software_ids || []).map(id => state.inventario.software.find(s => s.id === id)).filter(Boolean);
+            if (software.length > 0) {
+                doc.autoTable({
+                    startY: finalY,
+                    head: [['Software Asignado', 'Versión']],
+                    body: software.map(s => [s.nombre, s.version || 'N/A']),
+                    theme: 'grid'
+                });
+                finalY = doc.lastAutoTable.finalY + 10;
+            }
+
+            const perifericos = (user.perifericos_ids || []).map(id => state.inventario.perifericos.find(p => p.id === id)).filter(Boolean);
+            if (perifericos.length > 0) {
+                doc.autoTable({
+                    startY: finalY,
+                    head: [['Periférico', 'Marca/Modelo', 'S/N']],
+                    body: perifericos.map(p => [p.tipo, `${p.marca || ''} ${p.modelo || ''}`, p.numero_serie || 'N/A']),
+                    theme: 'grid'
+                });
+                finalY = doc.lastAutoTable.finalY + 10;
+            }
+            
+            if (user.trazabilidad && user.trazabilidad.length > 0) {
+                 doc.autoTable({
+                    startY: finalY,
+                    head: [['Fecha', 'Acción', 'Detalle']],
+                    body: [...user.trazabilidad].reverse().map(log => [new Date(log.fecha).toLocaleString('es-CO'), log.accion, log.detalle]),
+                    theme: 'grid'
+                });
+            }
+
+            doc.save(`Hoja_de_Vida_${user.nombre.replace(/ /g, '_')}.pdf`);
+        };
+        
+        // --- FUNCIONES DE IMPORTACIÓN ---
+        const openImportModal = (type) => {
+            state.importingType = type;
+            const headersMap = {
+                equipos: 'marca,modelo,numero_serie,estado,ubicacion,numero_factura,fecha_compra,fecha_vencimiento_garantia,costo',
+                software: 'nombre,tipo,version,stock,numero_factura,fecha_compra,fecha_vencimiento,costo',
+                perifericos: 'tipo,marca,modelo,numero_serie,estado,numero_factura,fecha_compra,fecha_vencimiento_garantia,costo',
+                registros: 'nombre,cargo,departamento,cedula,fecha_ingreso,induccion_tic,cuentas_creadas'
+            };
+            const typeName = type === 'registros' ? 'Usuarios' : type.charAt(0).toUpperCase() + type.slice(1);
+            document.getElementById('modal-import-title').textContent = `Importar ${typeName}`;
+            document.getElementById('import-headers-info').textContent = headersMap[type];
+            importForm.reset();
+            document.getElementById('import-status').textContent = '';
+            importModal.showModal();
+        };
+
+        const parseCSV = (text) => {
+            const lines = text.replace(/\r/g, '').split('\n');
+            const header = lines[0].split(',').map(h => h.trim());
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i]) continue;
+                const values = lines[i].split(',');
+                const entry = {};
+                for (let j = 0; j < header.length; j++) {
+                    entry[header[j]] = values[j] ? values[j].trim() : null;
+                }
+                data.push(entry);
+            }
+            return data;
+        };
+
+        importForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('import-status');
+            const file = e.target.import_file.files[0];
+            if (!file) {
+                statusEl.textContent = 'Por favor, selecciona un archivo.';
+                statusEl.className = 'text-sm text-center text-red-600';
+                return;
+            }
+
+            statusEl.textContent = 'Procesando...';
+            statusEl.className = 'text-sm text-center text-blue-600';
+
+            const text = await file.text();
+            const dataToImport = parseCSV(text);
+            
+            if (dataToImport.length === 0) {
+                statusEl.textContent = 'El archivo está vacío o tiene un formato incorrecto.';
+                statusEl.className = 'text-sm text-center text-red-600';
+                return;
+            }
+
+            const tableName = state.importingType;
+            try {
+                const cleanedData = dataToImport.map(row => {
+                    Object.keys(row).forEach(key => {
+                        if (row[key] === '') row[key] = null;
+                        if (key === 'costo' && row[key]) {
+                            row[key] = parseFloat(row[key]);
+                        }
+                        if (key === 'induccion_tic' && row[key]) {
+                            row[key] = ['true', 'si', '1'].includes(row[key].toLowerCase());
+                        }
+                    });
+                    row.company_id = state.activeCompanyId;
+                    return row;
+                });
+
+                const { error } = await supabaseClient.from(tableName).upsert(cleanedData);
+                if (error) throw error;
+
+                statusEl.textContent = `¡Éxito! Se importaron ${dataToImport.length} registros.`;
+                statusEl.className = 'text-sm text-center text-green-600';
+                
+                await loadData();
+                
+                setTimeout(() => {
+                    importModal.close();
+                }, 2000);
+
+            } catch (err) {
+                console.error('Error en la importación:', err);
+                statusEl.textContent = `Error: ${err.message}`;
+                statusEl.className = 'text-sm text-center text-red-600';
+            }
+        });
+
+        // --- FUNCIONES DE REPORTES ---
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+        };
+
+        const renderReportsPage = () => {
+            const sumCost = (items) => items.reduce((sum, item) => sum + (parseFloat(item.costo) || 0), 0);
+            
+            const totalCostoEquipos = sumCost(state.inventario.equipos);
+            const totalCostoSoftware = sumCost(state.inventario.software);
+            const totalCostoPerifericos = sumCost(state.inventario.perifericos);
+            const costoTotalInventario = totalCostoEquipos + totalCostoSoftware + totalCostoPerifericos;
+            const avgCostPerUser = state.registros.length > 0 ? costoTotalInventario / state.registros.length : 0;
+
+            document.getElementById('report-total-cost').textContent = formatCurrency(costoTotalInventario);
+            document.getElementById('report-avg-cost-user').textContent = formatCurrency(avgCostPerUser);
+
+            const costoTipoCtx = document.getElementById('chart-costo-tipo').getContext('2d');
+            if (state.charts.costoTipo) state.charts.costoTipo.destroy();
+            state.charts.costoTipo = new Chart(costoTipoCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Equipos', 'Software', 'Periféricos'],
+                    datasets: [{
+                        data: [totalCostoEquipos, totalCostoSoftware, totalCostoPerifericos],
+                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            const providerCosts = {};
+            [...state.inventario.equipos, ...state.inventario.software, ...state.inventario.perifericos].forEach(item => {
+                if (item.proveedor_id && item.costo > 0) {
+                    const provider = state.proveedores.find(p => p.id === item.proveedor_id);
+                    const providerName = provider ? provider.nombre : 'Sin Proveedor';
+                    if (!providerCosts[providerName]) {
+                        providerCosts[providerName] = 0;
+                    }
+                    providerCosts[providerName] += parseFloat(item.costo);
+                }
+            });
+
+            const costoProveedorCtx = document.getElementById('chart-costo-proveedor').getContext('2d');
+            if (state.charts.costoProveedor) state.charts.costoProveedor.destroy();
+            state.charts.costoProveedor = new Chart(costoProveedorCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(providerCosts),
+                    datasets: [{
+                        label: 'Costo Total por Proveedor',
+                        data: Object.values(providerCosts),
+                        backgroundColor: '#4f46e5'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        };
+
+        // --- LÓGICA DE EMPRESAS Y COLABORACIÓN ---
+        const populateCompanySwitcher = () => {
+            companySwitcher.innerHTML = '';
+            const acceptedCompanies = state.companies.filter(c => c.status === 'accepted');
+
+            if (acceptedCompanies.length === 0) {
+                companySwitcher.innerHTML = '<option>Crea o únete a una empresa</option>';
+            } else {
+                acceptedCompanies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company.id;
+                    option.textContent = company.name;
+                    companySwitcher.appendChild(option);
+                });
+            }
+            const savedCompanyId = localStorage.getItem('activeCompanyId');
+            if (savedCompanyId && acceptedCompanies.some(c => c.id == savedCompanyId)) {
+                companySwitcher.value = savedCompanyId;
+            } else if (acceptedCompanies.length > 0) {
+                companySwitcher.value = acceptedCompanies[0].id;
+            }
+            
+            state.activeCompanyId = companySwitcher.value || null;
+            localStorage.setItem('activeCompanyId', state.activeCompanyId);
+        };
+
+        companySwitcher.addEventListener('change', () => {
+            state.activeCompanyId = companySwitcher.value;
+            localStorage.setItem('activeCompanyId', state.activeCompanyId);
+            loadData();
+        });
+
+        async function getCompanyMembers(companyId) {
+            const { data, error } = await supabaseClient.rpc('get_company_members', {
+                p_company_id: companyId
+            });
+            if (error) {
+                console.error('Error fetching company members:', error);
+                return [];
+            }
+            return data;
+        }
+
+        const renderEmpresasPage = async () => {
+          const companyContainer = document.getElementById('company-list-container');
+          const invitationsContainer = document.getElementById('invitations-container');
+          companyContainer.innerHTML = '';
+          invitationsContainer.innerHTML = '';
+
+          const pendingInvitations = state.companies.filter(c => c.status === 'pending');
+          const acceptedCompanies = state.companies.filter(c => c.status === 'accepted');
+
+          if (pendingInvitations.length > 0) {
+              invitationsContainer.innerHTML = `<h3 class="text-lg font-semibold border-b pb-2 mb-2">Invitaciones Pendientes</h3>`;
+              pendingInvitations.forEach(invite => {
+                  const inviteCard = document.createElement('div');
+                  inviteCard.className = 'p-4 border rounded-lg flex justify-between items-center bg-yellow-50';
+                  inviteCard.innerHTML = `
+                      <p>Has sido invitado a unirte a <strong>${invite.name}</strong>.</p>
+                      <div class="flex gap-2">
+                          <button data-company-id="${invite.id}" class="accept-invite-btn py-1 px-3 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">Aceptar</button>
+                          <button data-company-id="${invite.id}" class="decline-invite-btn py-1 px-3 text-sm rounded-md text-white bg-red-600 hover:bg-red-700">Rechazar</button>
+                      </div>
+                  `;
+                  invitationsContainer.appendChild(inviteCard);
+              });
+          }
+
+
+          companyContainer.innerHTML = `<h3 class="text-lg font-semibold border-b pb-2 mb-2">Mis Empresas</h3>`;
+          if (acceptedCompanies.length === 0) {
+              companyContainer.innerHTML += '<p class="text-center text-gray-500 py-4">Aún no perteneces a ninguna empresa.</p>';
+          } else {
+              for (const company of acceptedCompanies) {
+                  const isOwner = company.owner_id === state.user.id;
+                  
+                  const members = await getCompanyMembers(company.id);
+
+                  const membersHtml = members.length > 0 ? members.map(member => {
+                      const statusColor = member.status === 'pending' ? 'bg-yellow-200 text-yellow-800' : 'bg-gray-200 text-gray-700';
+                      const statusText = member.status === 'pending' ? 'Pendiente' : member.role;
+                      return `
+                          <li class="flex justify-between items-center text-sm py-1">
+                              <span>${member.email}</span>
+                              <span class="text-xs font-semibold ${statusColor} px-2 py-1 rounded-full">${statusText}</span>
+                          </li>
+                      `;
+                  }).join('') : '<li class="text-sm text-gray-500">Aún no hay miembros.</li>';
+                  
+                  const actionButtonHtml = isOwner 
+                    ? `<button data-company-id="${company.id}" class="delete-company-btn py-1 px-3 text-sm rounded-md text-white bg-red-600 hover:bg-red-700">Eliminar Empresa</button>`
+                    : `<button data-company-id="${company.id}" class="leave-company-btn py-1 px-3 text-sm rounded-md text-white bg-yellow-600 hover:bg-yellow-700">Salir de la Empresa</button>`;
+
+                  const card = document.createElement('div');
+                  card.className = 'p-4 border rounded-lg space-y-3';
+                  card.innerHTML = `
+                      <div class="flex justify-between items-center">
+                          <h3 class="font-bold text-lg">${company.name} ${isOwner ? '<span class="text-xs font-normal bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Propietario</span>' : ''}</h3>
+                           <div class="flex gap-2">
+                                ${isOwner ? `<button data-company-id="${company.id}" class="invite-user-btn py-1 px-3 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">Invitar</button>` : ''}
+                                ${actionButtonHtml}
+                           </div>
+                      </div>
+                      <div>
+                          <h4 class="font-semibold text-sm mb-2">Miembros:</h4>
+                          <ul class="space-y-1">
+                              ${membersHtml}
+                          </ul>
+                      </div>
+                  `;
+                  companyContainer.appendChild(card);
+              }
+          }
+        };
+        
+        companyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = companyForm.name.value;
+            if (!name) return;
+
+            // Verificar si ya existe una empresa con ese nombre para el usuario actual
+            const { data: existingCompany, error: checkError } = await supabaseClient
+                .from('companies')
+                .select('id')
+                .eq('name', name)
+                .eq('owner_id', state.user.id)
+                .maybeSingle();
+
+            if (checkError) {
+                showToast(`Error al verificar el nombre: ${checkError.message}`, 'error');
+                return;
+            }
+
+            if (existingCompany) {
+                showToast('Ya tienes una empresa con ese nombre.', 'error');
+                return;
+            }
+
+            const { data: newCompany, error } = await supabaseClient
+                .rpc('create_company_and_add_owner', { company_name: name });
+
+            if (error) {
+                console.error("Error creando empresa:", error);
+                showToast("Error al crear la empresa: " + error.message, 'error');
+                return;
+            }
+
+            companyModal.close();
+            companyForm.reset(); 
+            showToast(`Empresa "${name}" creada con éxito.`);
+            
+            await loadUserCompaniesAndInvitations();
+            
+            state.activeCompanyId = newCompany.id;
+            localStorage.setItem('activeCompanyId', newCompany.id);
+            companySwitcher.value = newCompany.id;
+            await loadData();
+        });
+        
+        const openInviteModal = (companyId) => {
+            const company = state.companies.find(c => c.id == companyId);
+            if (!company) return;
+            document.getElementById('invite-modal-title').textContent = `Invitar a ${company.name}`;
+            inviteForm.company_id.value = companyId;
+            inviteModal.showModal();
+        };
+
+        inviteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const companyId = inviteForm.company_id.value;
+            const email = inviteForm.email.value;
+
+            try {
+                const { data, error } = await supabaseClient.functions.invoke('invite-user', {
+                    body: { company_id: companyId, email: email },
+                });
+
+                if (error) throw error; 
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                showToast(data.message || 'Invitación enviada con éxito.');
+                inviteModal.close();
+            } catch (error) {
+                console.error('Error al invitar usuario:', error);
+                let errorMessage = 'Ocurrió un error desconocido.';
+                if (error.context && typeof error.context.json === 'function') {
+                    try {
+                        const errorBody = await error.context.json();
+                        if (errorBody.error) {
+                            errorMessage = errorBody.error;
+                        }
+                    } catch (e) {
+                        errorMessage = error.message;
+                    }
+                } else {
+                    errorMessage = error.message;
+                }
+                showToast(`Error: ${errorMessage}`, 'error');
+            }
+        });
+
+        // --- SISTEMA DE NOTIFICACIONES ---
+        let notificationChannel = null;
+
+        const initializeNotifications = () => {
+            loadUserCompaniesAndInvitations(); 
+
+            if (notificationChannel) {
+                supabaseClient.removeChannel(notificationChannel);
+            }
+            notificationChannel = supabaseClient.channel(`company-invites-${state.user.id}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*', // Escuchar INSERT, UPDATE, DELETE
+                        schema: 'public',
+                        table: 'company_users',
+                        filter: `user_id=eq.${state.user.id}`
+                    },
+                    async (payload) => {
+                        console.log('Cambio en tiempo real detectado!', payload);
+                        
+                        if(payload.eventType === 'INSERT') {
+                            showToast(`¡Has recibido una nueva invitación!`);
+                        }
+                        
+                        await loadUserCompaniesAndInvitations();
+                    }
+                )
+                .subscribe();
+        };
+
+        const renderNotifications = () => {
+            const invites = state.companies.filter(c => c.status === 'pending');
+
+            if (!invites || invites.length === 0) {
+                notificationCount.classList.add('hidden');
+                notificationsList.innerHTML = '<p class="p-4 text-sm text-gray-500 text-center">No tienes notificaciones nuevas.</p>';
+                return;
+            }
+
+            notificationCount.textContent = invites.length;
+            notificationCount.classList.remove('hidden');
+
+            notificationsList.innerHTML = '';
+            invites.forEach(invite => {
+                const notificationItem = document.createElement('a');
+                notificationItem.href = '#';
+                notificationItem.className = 'block p-4 text-sm text-gray-700 hover:bg-gray-100';
+                notificationItem.innerHTML = `
+                    <p class="font-semibold">Nueva Invitación</p>
+                    <p>Has sido invitado a unirte a <strong>${invite.name}</strong>.</p>
+                    <p class="text-xs text-gray-500 mt-1">Haz clic para ir a la página de empresas y responder.</p>
+                `;
+                notificationItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showPage('empresas');
+                    notificationsPanel.classList.add('hidden');
+                });
+                notificationsList.appendChild(notificationItem);
+            });
+        };
+
+        const showToast = (message, type = 'info') => {
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-600' : (type === 'info' ? 'bg-blue-600' : 'bg-green-600');
+            toast.className = `fixed top-5 right-5 ${bgColor} text-white py-2 px-4 rounded-lg shadow-lg z-[10000] animate-fade-in-out`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        }
+
+        notificationsBtn.addEventListener('click', () => {
+            notificationsPanel.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!notificationsBtn.contains(e.target) && !notificationsPanel.contains(e.target)) {
+                notificationsPanel.classList.add('hidden');
+            }
+        });
+
+        // --- INICIALIZACIÓN Y LOGIN ---
+        const checkLogin = async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                state.user = session.user;
+                
+                const displayName = state.user.user_metadata?.username || state.user.email;
+                userDisplayName.textContent = displayName;
+                userDisplayName.title = displayName;
+                
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                
+                await loadUserCompaniesAndInvitations(); 
+                await loadData();
+                initializeNotifications(); 
+                
+                showPage(state.currentPage);
+                
+            } else {
+                state.user = null;
+                state.companies = [];
+                state.activeCompanyId = null;
+                userDisplayName.textContent = '';
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+                if (notificationChannel) {
+                    supabaseClient.removeChannel(notificationChannel);
+                    notificationChannel = null;
+                }
+            }
+        };
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) {
+                document.getElementById('login-error').textContent = error.message;
+                document.getElementById('login-error').classList.remove('hidden');
+            } else {
+                document.getElementById('login-error').classList.add('hidden');
+            }
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = registerForm.email.value;
+            const password = registerForm.password.value;
+            const username = registerForm.username.value;
+            const registerMessage = document.getElementById('register-message');
+            
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        username: username 
+                    }
+                }
+            });
+
+            if (error) {
+                registerMessage.textContent = error.message;
+                registerMessage.className = 'text-sm text-center text-red-600';
+            } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+                registerMessage.textContent = 'Este correo ya está registrado. Se ha reenviado el correo de confirmación.';
+                registerMessage.className = 'text-sm text-center text-yellow-600';
+            }
+            else {
+                registerMessage.textContent = '¡Registro exitoso! Por favor, revisa tu correo para confirmar tu cuenta.';
+                registerMessage.className = 'text-sm text-center text-green-600';
+                registerForm.reset();
+            }
+        });
+
+        googleLoginBtn.addEventListener('click', async () => {
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                 options: {
+                    redirectTo: window.location.href
+                }
+            });
+            if (error) {
+                console.error('Error con el inicio de sesión de Google:', error.message);
+                showToast('Error con el inicio de sesión de Google: ' + error.message, 'error');
+            }
+        });
+
+        showRegisterLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginWrapper.classList.add('hidden');
+            registerWrapper.classList.remove('hidden');
+        });
+
+        showLoginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerWrapper.classList.add('hidden');
+            loginWrapper.classList.remove('hidden');
+        });
+
+        logoutBtn.addEventListener('click', async () => {
+            if (notificationChannel) {
+                supabaseClient.removeChannel(notificationChannel);
+                notificationChannel = null;
+            }
+            await supabaseClient.auth.signOut();
+            localStorage.removeItem('activeCompanyId');
+        });
+
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            console.log(`Auth event: ${event}`);
+            checkLogin();
+        });
+
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        document.querySelectorAll('.dropdown').forEach(dropdown => {
+            const panel = dropdown.querySelector('.dropdown-panel');
+            let hideTimeout;
+            const show = () => { clearTimeout(hideTimeout); panel.classList.remove('hidden'); };
+            const hide = () => { hideTimeout = setTimeout(() => panel.classList.add('hidden'), 200); };
+            dropdown.addEventListener('mouseenter', show);
+            dropdown.addEventListener('mouseleave', hide);
+            panel.addEventListener('click', (e) => { if(e.target.matches('a')) panel.classList.add('hidden'); });
+        });
+
+        // --- LÓGICA DE MODALES DE CONFIRMACIÓN ---
+        const openConfirmModal = (message, onConfirm) => {
+            document.getElementById('confirm-modal-text').textContent = message;
+            const confirmBtn = document.getElementById('confirm-modal-confirm-btn');
+            const cancelBtn = document.getElementById('confirm-modal-cancel-btn');
+
+            const confirmHandler = () => {
+                onConfirm();
+                confirmModal.close();
+                cleanup();
+            };
+            const cancelHandler = () => {
+                confirmModal.close();
+                cleanup();
+            };
+            const cleanup = () => {
+                confirmBtn.removeEventListener('click', confirmHandler);
+                cancelBtn.removeEventListener('click', cancelHandler);
+            };
+
+            confirmBtn.addEventListener('click', confirmHandler, { once: true });
+            cancelBtn.addEventListener('click', cancelHandler, { once: true });
+            
+            confirmModal.showModal();
+        };
+
+        const openDeleteCompanyModal = (company) => {
+            deleteCompanyForm.company_id.value = company.id;
+            deleteCompanyForm.company_name.value = company.name;
+            document.getElementById('delete-company-name-confirm').textContent = company.name;
+            deleteCompanyForm.reset();
+            document.getElementById('delete-company-submit-btn').disabled = true;
+            deleteCompanyModal.showModal();
+        };
+
+        deleteCompanyForm.querySelector('input[name="confirmation_text"]').addEventListener('input', (e) => {
+            const expectedName = deleteCompanyForm.company_name.value;
+            const submitBtn = document.getElementById('delete-company-submit-btn');
+            if (e.target.value === expectedName) {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+            }
+        });
+
+        deleteCompanyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const companyId = deleteCompanyForm.company_id.value;
+            const companyName = deleteCompanyForm.company_name.value;
+
+            const { data, error } = await supabaseClient.functions.invoke('delete-company', {
+                body: { company_id: companyId },
+            });
+
+            deleteCompanyModal.close();
+
+            if (error || (data && data.error)) {
+                const errorMessage = (data && data.error) ? data.error : error.message;
+                console.error("Error deleting company:", errorMessage);
+                showToast("Error al eliminar la empresa: " + errorMessage, 'error');
+            } else {
+                showToast(`Empresa "${companyName}" eliminada.`);
+                await loadUserCompaniesAndInvitations();
+                if (state.activeCompanyId == companyId) {
+                    await loadData();
+                }
+            }
+        });
+
+    });
+    </script>
+</body>
+</html>
