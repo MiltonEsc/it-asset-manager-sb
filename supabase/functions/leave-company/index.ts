@@ -4,19 +4,28 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
+// Función para crear un cliente de Supabase con privilegios de administrador
+const createAdminClient = () => {
+  return createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const supabase = createClient(
+    // Cliente para verificar la autenticación del usuario
+    const userClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     )
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await userClient.auth.getUser()
     if (!user) {
       return new Response(JSON.stringify({ error: 'Usuario no autenticado' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -33,7 +42,7 @@ serve(async (req) => {
     }
 
     // 1. Verificar que el usuario NO sea el propietario
-    const { data: company, error: ownerError } = await supabase
+    const { data: company, error: ownerError } = await userClient
       .from('companies')
       .select('owner_id')
       .eq('id', company_id)
@@ -53,8 +62,9 @@ serve(async (req) => {
       })
     }
 
-    // 2. Eliminar la membresía del usuario en esa empresa
-    const { error: leaveError } = await supabase
+    // 2. **CAMBIO CLAVE**: Usar el cliente de administrador para eliminar la membresía
+    const supabaseAdmin = createAdminClient();
+    const { error: leaveError } = await supabaseAdmin
       .from('company_users')
       .delete()
       .eq('company_id', company_id)

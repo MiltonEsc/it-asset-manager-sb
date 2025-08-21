@@ -1143,6 +1143,11 @@
             
             delete data.factura_pdf;
             
+            // FIX: Convertir campos de fecha vacíos a null para evitar errores en la base de datos
+            if (data.fecha_compra === '') data.fecha_compra = null;
+            if (data.fecha_vencimiento_garantia === '') data.fecha_vencimiento_garantia = null;
+            if (data.fecha_vencimiento === '') data.fecha_vencimiento = null;
+
             data.costo = parseFloat(data.costo) || 0;
             if (data.stock) data.stock = parseInt(data.stock);
             data.proveedor_id = data.proveedor_id ? parseInt(data.proveedor_id) : null;
@@ -1745,11 +1750,11 @@
                   const inviteCard = document.createElement('div');
                   inviteCard.className = 'p-4 border rounded-lg flex justify-between items-center bg-yellow-50';
                   inviteCard.innerHTML = `
-                      <p>Has sido invitado a unirte a <strong>${invite.name}</strong>.</p>
-                      <div class="flex gap-2">
-                          <button data-company-id="${invite.id}" class="accept-invite-btn py-1 px-3 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">Aceptar</button>
-                          <button data-company-id="${invite.id}" class="decline-invite-btn py-1 px-3 text-sm rounded-md text-white bg-red-600 hover:bg-red-700">Rechazar</button>
-                      </div>
+                        <p>Has sido invitado a unirte a <strong>${invite.name}</strong>.</p>
+                        <div class="flex gap-2">
+                            <button data-company-id="${invite.id}" class="accept-invite-btn py-1 px-3 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">Aceptar</button>
+                            <button data-company-id="${invite.id}" class="decline-invite-btn py-1 px-3 text-sm rounded-md text-white bg-red-600 hover:bg-red-700">Rechazar</button>
+                        </div>
                   `;
                   invitationsContainer.appendChild(inviteCard);
               });
@@ -1769,10 +1774,10 @@
                       const statusColor = member.status === 'pending' ? 'bg-yellow-200 text-yellow-800' : 'bg-gray-200 text-gray-700';
                       const statusText = member.status === 'pending' ? 'Pendiente' : member.role;
                       return `
-                          <li class="flex justify-between items-center text-sm py-1">
-                              <span>${member.email}</span>
-                              <span class="text-xs font-semibold ${statusColor} px-2 py-1 rounded-full">${statusText}</span>
-                          </li>
+                            <li class="flex justify-between items-center text-sm py-1">
+                                <span>${member.email}</span>
+                                <span class="text-xs font-semibold ${statusColor} px-2 py-1 rounded-full">${statusText}</span>
+                            </li>
                       `;
                   }).join('') : '<li class="text-sm text-gray-500">Aún no hay miembros.</li>';
                   
@@ -1783,19 +1788,19 @@
                   const card = document.createElement('div');
                   card.className = 'p-4 border rounded-lg space-y-3';
                   card.innerHTML = `
-                      <div class="flex justify-between items-center">
-                          <h3 class="font-bold text-lg">${company.name} ${isOwner ? '<span class="text-xs font-normal bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Propietario</span>' : ''}</h3>
-                           <div class="flex gap-2">
-                                ${isOwner ? `<button data-company-id="${company.id}" class="invite-user-btn py-1 px-3 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">Invitar</button>` : ''}
-                                ${actionButtonHtml}
-                           </div>
-                      </div>
-                      <div>
-                          <h4 class="font-semibold text-sm mb-2">Miembros:</h4>
-                          <ul class="space-y-1">
-                              ${membersHtml}
-                          </ul>
-                      </div>
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-lg">${company.name} ${isOwner ? '<span class="text-xs font-normal bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Propietario</span>' : ''}</h3>
+                             <div class="flex gap-2">
+                                 ${isOwner ? `<button data-company-id="${company.id}" class="invite-user-btn py-1 px-3 text-sm rounded-md text-white bg-green-600 hover:bg-green-700">Invitar</button>` : ''}
+                                 ${actionButtonHtml}
+                             </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-sm mb-2">Miembros:</h4>
+                            <ul class="space-y-1">
+                                ${membersHtml}
+                            </ul>
+                        </div>
                   `;
                   companyContainer.appendChild(card);
               }
