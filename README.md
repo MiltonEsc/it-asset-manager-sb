@@ -1,6 +1,18 @@
 Gestión de Activos y Hojas de Vida TIC
 Una aplicación web completa para la gestión centralizada del inventario tecnológico (equipos, software, periféricos), el seguimiento de hojas de vida de usuarios y el registro de mantenimientos en un entorno multiempresa.
 
+<p align="center">
+<a href="https://itamhub.netlify.app/" target="_blank">
+<img src="https://placehold.co/800x400/e2e8f0/667eea?text=Ver+Demo+en+Vivo" alt="Captura de pantalla de la aplicación"/>
+</a>
+</p>
+
+<p align="center">
+<a href="https://itamhub.netlify.app/" target="_blank">
+<strong>Ver Demo en Vivo &rarr;</strong>
+</a>
+</p>
+
 ✨ Características Principales
 🏢 Gestión Multiempresa: Crea, gestiona e invita a usuarios a múltiples empresas desde una sola cuenta.
 
@@ -58,6 +70,21 @@ const SUPABASE_URL = 'URL_DE_TU_PROYECTO_SUPABASE';
 const SUPABASE_KEY = 'TU_CLAVE_PUBLICA_ANON';
 
 ¡Listo! Abre el archivo index.html en tu navegador para empezar a usar la aplicación.
+
+🤝 ¿Cómo Colaborar?
+¡Gracias por tu interés en colaborar! Toda ayuda es bienvenida. Si quieres contribuir al proyecto, por favor sigue estos pasos:
+
+Reporta Bugs o Sugiere Mejoras: Si encuentras un error o tienes una idea para una nueva funcionalidad, por favor abre un "Issue" para que podamos discutirlo. (Nota: si el repositorio es privado, necesitarás invitar a los colaboradores para que puedan ver y crear issues).
+
+Haz un Fork del Repositorio: Crea una copia del proyecto en tu propia cuenta de GitHub.
+
+Crea una Nueva Rama:
+
+git checkout -b feature/nombre-de-tu-mejora
+
+Realiza tus Cambios: Escribe tu código y asegúrate de que todo funcione correctamente.
+
+Envía un Pull Request: Una vez que termines, envía un "Pull Request" desde tu rama a la rama main de este repositorio. Por favor, incluye una descripción clara de los cambios que realizaste.
 
 ❤️ Apoya este Proyecto
 Si esta aplicación te ha sido de utilidad, te ha ahorrado tiempo o te ha ayudado a aprender, ¡considera apoyarme con un café! Tu apoyo me motiva a seguir manteniendo y mejorando este proyecto.
