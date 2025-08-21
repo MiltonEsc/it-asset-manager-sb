@@ -30,7 +30,7 @@ Chart.js para gráficos y reportes.
 jsPDF y jsPDF-AutoTable para la exportación de PDFs.
 
 🔧 Instalación y Puesta en Marcha
-Para ejecutar este proyecto localmente o en tu propio servidor, solo necesitas un navegador web moderno. Sin embargo, debes configurarlo para que se conecte a tu propia instancia de Supabase.
+Para ejecutar este proyecto, necesitas configurarlo con tu propia instancia de Supabase.
 
 Clona el repositorio:
 
@@ -40,19 +40,19 @@ Crea tu proyecto en Supabase:
 
 Ve a Supabase.io y crea un nuevo proyecto.
 
-Utiliza el script SQL proporcionado en este repositorio (o crea las tablas manualmente) para configurar tu base de datos.
+Ve a la sección SQL Editor en el dashboard de tu proyecto.
 
-Configura el Storage para crear los buckets necesarios (activos, facturas, evidencias).
+Abre el archivo schema.sql de este repositorio, copia todo su contenido, pégalo en el editor de Supabase y haz clic en "RUN". Esto creará todas las tablas, funciones y políticas de seguridad necesarias.
 
-Activa las Políticas de Seguridad a Nivel de Fila (RLS) en tus tablas para proteger los datos.
+Ve a la sección Storage y crea los buckets necesarios con acceso público: activos, facturas, evidencias.
 
-Configura las claves de Supabase:
+Configura las claves de Supabase en el código:
 
 Abre el archivo index.html.
 
 Busca la sección // --- CONFIGURACIÓN DE SUPABASE --- en el script.
 
-Reemplaza los valores de SUPABASE_URL y SUPABASE_KEY con las claves de tu proyecto de Supabase.
+Reemplaza los valores de SUPABASE_URL y SUPABASE_KEY con las claves de tu proyecto. Las encontrarás en Project Settings > API.
 
 const SUPABASE_URL = 'URL_DE_TU_PROYECTO_SUPABASE';
 const SUPABASE_KEY = 'TU_CLAVE_PUBLICA_ANON';
