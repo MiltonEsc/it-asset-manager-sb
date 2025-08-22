@@ -8,7 +8,7 @@ Una aplicación web completa para la gestión centralizada del inventario tecnol
 </p>
 
 <p align="center">
-<a href="https://itamhub.netlify.app/" target="_blank">
+<a href="https://it-asset-manager.netlify.app/" target="_blank">
 <strong>Ver Demo en Vivo &rarr;</strong>
 </a>
 </p>
