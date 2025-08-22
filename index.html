@@ -521,11 +521,34 @@
         async function saveInventoryItem(type, data) {
             const tableName = type === 'software' ? 'software' : type + 's';
             try {
-                if (!data.id) delete data.id;
                 data.company_id = state.activeCompanyId;
-                
-                const { error } = await supabaseClient.from(tableName).upsert(data, { onConflict: 'id' });
+                let response; // Para guardar la respuesta de Supabase
+
+                if (data.id) {
+                    // --- LÓGICA DE ACTUALIZACIÓN ---
+                    // Si el objeto 'data' tiene un ID, significa que estamos editando.
+                    const itemId = data.id;
+                    delete data.id; // No se debe incluir el ID en los datos a actualizar.
+                    
+                    response = await supabaseClient
+                        .from(tableName)
+                        .update(data)
+                        .eq('id', itemId); // Usamos el ID para encontrar la fila correcta.
+
+                } else {
+                    // --- LÓGICA DE INSERCIÓN ---
+                    // Si no hay ID, es un nuevo registro.
+                    delete data.id; // Nos aseguramos de que el ID no se envíe.
+                    
+                    response = await supabaseClient
+                        .from(tableName)
+                        .insert(data);
+                }
+
+                // Verificamos si hubo un error en cualquiera de las dos operaciones.
+                const { error } = response;
                 if (error) throw error;
+
                 console.log(`✅ ${type} guardado en Supabase`);
             } catch (err) {
                 console.error(`❌ Error guardando ${type}:`, err.message);
