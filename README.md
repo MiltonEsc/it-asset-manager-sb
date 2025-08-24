@@ -93,5 +93,10 @@ Si esta aplicación te ha sido de utilidad, te ha ahorrado tiempo o te ha ayudad
 <img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi2.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' />
 </a>
 
+✨ Una Nota Especial
+Este proyecto fue desarrollado en colaboración con Gemini, una IA de Google. Sirve como un ejemplo de cómo la inteligencia artificial puede actuar como un compañero de programación, ayudando a resolver problemas, generar código y acelerar el proceso de creación.
+
+El objetivo es inspirar a otros a aprender y a construir cosas increíbles. ¡La tecnología es una herramienta poderosa para convertir ideas en realidad!
+
 📜 Licencia
 Este proyecto está bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles.
