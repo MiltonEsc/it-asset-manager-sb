@@ -2,13 +2,13 @@ Gestión de Activos y Hojas de Vida TIC
 Una aplicación web completa para la gestión centralizada del inventario tecnológico (equipos, software, periféricos), el seguimiento de hojas de vida de usuarios y el registro de mantenimientos en un entorno multiempresa.
 
 <p align="center">
-<a href="https://it-asset-manager.netlify.app/" target="_blank">
+<a href="https://itamhub.netlify.app/" target="_blank">
 <img src="https://placehold.co/800x400/e2e8f0/667eea?text=Ver+Demo+en+Vivo" alt="Captura de pantalla de la aplicación"/>
 </a>
 </p>
 
 <p align="center">
-<a href="https://it-asset-manager.netlify.app/" target="_blank">
+<a href="https://itamhub.netlify.app/" target="_blank">
 <strong>Ver Demo en Vivo &rarr;</strong>
 </a>
 </p>
